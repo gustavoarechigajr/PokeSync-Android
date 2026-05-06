@@ -1,12 +1,11 @@
 package com.pokesync.android.data.repository
 
 import android.net.Uri
+import com.pokesync.android.data.api.AndroidPokemonDto
+import com.pokesync.android.data.api.AndroidSaveResponse
 import com.pokesync.android.data.api.PokeSyncApi
-import com.pokesync.android.data.api.PokemonDto
-import com.pokesync.android.data.api.TransferRequest
 import com.pokesync.android.data.local.SaveFileRepository
 import com.pokesync.android.domain.model.Pokemon
-import com.pokesync.android.domain.model.SaveFile
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -18,8 +17,6 @@ class PokemonRepository @Inject constructor(
     private val api: PokeSyncApi,
     private val saveFileRepository: SaveFileRepository,
 ) {
-    suspend fun getVault(): List<Pokemon> = api.getVault().map { it.toDomain() }
-
     suspend fun uploadSave(uri: Uri): Pair<String, List<Pokemon>> {
         val bytes = saveFileRepository.readBytes(uri)
         val requestBody = bytes.toRequestBody("application/octet-stream".toMediaType())
@@ -31,23 +28,23 @@ class PokemonRepository @Inject constructor(
     suspend fun getSavePokemon(saveId: String): List<Pokemon> =
         api.getSavePokemon(saveId).map { it.toDomain() }
 
-    suspend fun transferPokemon(pokemonIds: List<String>, targetSaveId: String): List<Pokemon> {
-        val response = api.transferPokemon(targetSaveId, TransferRequest(pokemonIds, targetSaveId))
-        return response.pokemon.map { it.toDomain() }
-    }
-
-    private fun PokemonDto.toDomain() = Pokemon(
+    private fun AndroidPokemonDto.toDomain() = Pokemon(
         id = id,
-        species = species,
-        nickname = nickname,
+        species = speciesName,
+        nickname = nickname.takeIf { isNicknamed },
         level = level,
         isShiny = isShiny,
-        gender = gender,
+        gender = when (gender) { 0 -> "M"; 1 -> "F"; else -> null },
         nature = nature,
-        ability = ability,
-        moves = moves,
-        heldItem = heldItem,
+        ability = null,
+        moves = listOfNotNull(
+            move1.takeIf { it != 0 }?.toString(),
+            move2.takeIf { it != 0 }?.toString(),
+            move3.takeIf { it != 0 }?.toString(),
+            move4.takeIf { it != 0 }?.toString(),
+        ),
+        heldItem = null,
         generation = generation,
-        spriteUrl = spriteUrl,
+        spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$speciesId.png",
     )
 }

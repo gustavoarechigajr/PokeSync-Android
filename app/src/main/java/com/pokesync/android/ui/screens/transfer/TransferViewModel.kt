@@ -15,9 +15,7 @@ data class TransferUiState(
     val savePokemon: List<Pokemon> = emptyList(),
     val selected: Set<String> = emptySet(),
     val isLoading: Boolean = false,
-    val isTransferring: Boolean = false,
     val error: String? = null,
-    val transferComplete: Boolean = false,
 )
 
 @HiltViewModel
@@ -46,18 +44,7 @@ class TransferViewModel @Inject constructor(
     fun toggleSelection(pokemonId: String) {
         val current = _uiState.value.selected
         _uiState.value = _uiState.value.copy(
-            selected = if (pokemonId in current) current - pokemonId else current + pokemonId
+            selected = if (pokemonId in current) current - pokemonId else current + pokemonId,
         )
-    }
-
-    fun transferToVault() {
-        val ids = _uiState.value.selected.toList()
-        if (ids.isEmpty()) return
-        _uiState.value = _uiState.value.copy(isTransferring = true, error = null)
-        viewModelScope.launch {
-            runCatching { repository.transferPokemon(ids, saveId) }
-                .onSuccess { _uiState.value = _uiState.value.copy(isTransferring = false, transferComplete = true) }
-                .onFailure { _uiState.value = _uiState.value.copy(isTransferring = false, error = it.message) }
-        }
     }
 }

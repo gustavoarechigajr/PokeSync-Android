@@ -12,36 +12,39 @@ data class LoginRequest(
 @JsonClass(generateAdapter = true)
 data class LoginResponse(
     val token: String,
-    @Json(name = "user_id") val userId: String,
+    @Json(name = "userId") val userId: String,
     val username: String,
 )
 
 @JsonClass(generateAdapter = true)
-data class PokemonDto(
+data class AndroidPokemonDto(
     val id: String,
-    val species: String,
-    val nickname: String?,
+    val speciesId: Int,
+    val speciesName: String,
+    val nickname: String,
+    val isNicknamed: Boolean,
     val level: Int,
-    @Json(name = "is_shiny") val isShiny: Boolean,
-    val gender: String?,
-    val nature: String?,
-    val ability: String?,
-    val moves: List<String>,
-    @Json(name = "held_item") val heldItem: String?,
+    val isShiny: Boolean,
+    val isEgg: Boolean,
+    val gender: Int,
+    val nature: String,
+    val ball: String,
     val generation: Int,
-    @Json(name = "sprite_url") val spriteUrl: String?,
+    val box: Int,
+    val slot: Int,
+    val move1: Int,
+    val move2: Int,
+    val move3: Int,
+    val move4: Int,
 )
 
 @JsonClass(generateAdapter = true)
-data class UploadSaveResponse(
-    @Json(name = "save_id") val saveId: String,
-    val pokemon: List<PokemonDto>,
-    @Json(name = "game_title") val gameTitle: String?,
-    val generation: Int?,
-)
-
-@JsonClass(generateAdapter = true)
-data class TransferRequest(
-    @Json(name = "pokemon_ids") val pokemonIds: List<String>,
-    @Json(name = "target_save_id") val targetSaveId: String,
+data class AndroidSaveResponse(
+    val saveId: String,
+    val gameVersion: String,
+    val generation: Int,
+    val trainerName: String,
+    val boxCount: Int,
+    val pokemonCount: Int,
+    val pokemon: List<AndroidPokemonDto>,
 )

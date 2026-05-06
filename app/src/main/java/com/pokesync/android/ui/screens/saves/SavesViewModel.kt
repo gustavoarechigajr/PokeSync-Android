@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 data class SavesUiState(
     val saves: List<SaveFile> = emptyList(),
-    val uploadingSaveId: String? = null,
+    val isUploading: Boolean = false,
     val error: String? = null,
 )
 
@@ -29,19 +29,21 @@ class SavesViewModel @Inject constructor(
 
     fun onFilePicked(uri: Uri) {
         val save = saveFileRepository.resolveSaveFile(uri) ?: return
-        _uiState.value = _uiState.value.copy(saves = _uiState.value.saves + save)
+        if (_uiState.value.saves.none { it.uri == uri }) {
+            _uiState.value = _uiState.value.copy(saves = _uiState.value.saves + save)
+        }
     }
 
     fun uploadSave(uri: Uri, onSuccess: (saveId: String) -> Unit) {
-        _uiState.value = _uiState.value.copy(error = null)
+        _uiState.value = _uiState.value.copy(isUploading = true, error = null)
         viewModelScope.launch {
             runCatching { pokemonRepository.uploadSave(uri) }
                 .onSuccess { (saveId, _) ->
-                    _uiState.value = _uiState.value.copy(uploadingSaveId = null)
+                    _uiState.value = _uiState.value.copy(isUploading = false)
                     onSuccess(saveId)
                 }
                 .onFailure { e ->
-                    _uiState.value = _uiState.value.copy(uploadingSaveId = null, error = e.message)
+                    _uiState.value = _uiState.value.copy(isUploading = false, error = e.message)
                 }
         }
     }

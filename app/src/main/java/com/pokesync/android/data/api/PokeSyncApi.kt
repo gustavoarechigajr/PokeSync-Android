@@ -10,25 +10,18 @@ import retrofit2.http.Path
 
 interface PokeSyncApi {
 
+    // Auth — no JWT required
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
     @POST("api/auth/register")
     suspend fun register(@Body request: LoginRequest): LoginResponse
 
-    @GET("api/pokemon")
-    suspend fun getVault(): List<PokemonDto>
-
+    // Android save API — JWT required
     @Multipart
-    @POST("api/saves/upload")
-    suspend fun uploadSave(@Part file: MultipartBody.Part): UploadSaveResponse
+    @POST("api/android/saves/upload")
+    suspend fun uploadSave(@Part file: MultipartBody.Part): AndroidSaveResponse
 
-    @GET("api/saves/{saveId}/pokemon")
-    suspend fun getSavePokemon(@Path("saveId") saveId: String): List<PokemonDto>
-
-    @POST("api/saves/{saveId}/transfer")
-    suspend fun transferPokemon(
-        @Path("saveId") saveId: String,
-        @Body request: TransferRequest,
-    ): UploadSaveResponse
+    @GET("api/android/saves/{saveId}/pokemon")
+    suspend fun getSavePokemon(@Path("saveId") saveId: String): List<AndroidPokemonDto>
 }

@@ -2,6 +2,7 @@ package com.pokesync.android.ui.screens.connect
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,7 +76,14 @@ fun ConnectScreen(
                 onClick = { viewModel.login(onConnected) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Connect")
+                Text("Sign In")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { viewModel.register(onConnected) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Create Account")
             }
         }
 
