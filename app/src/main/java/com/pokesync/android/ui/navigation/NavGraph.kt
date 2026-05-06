@@ -58,7 +58,7 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
         }
         composable(Screen.Saves.route) {
             SavesScreen(
-                onTransfer = { saveId ->
+                onBrowsePokemon = { saveId ->
                     navController.navigate(Screen.Transfer.createRoute(saveId))
                 }
             )
