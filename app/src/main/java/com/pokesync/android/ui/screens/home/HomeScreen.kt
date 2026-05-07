@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -90,10 +91,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.pokesync.android.data.local.DetectedSaveFile
@@ -297,15 +296,13 @@ fun HomeScreen(
         // ── Drag ghost ─────────────────────────────────────────────────────────
         dragState?.let { ds ->
             val ghostDp = 72.dp
-            val ghostPx = with(LocalDensity.current) { ghostDp.toPx() }
+            val density = LocalDensity.current
+            val ghostPx = with(density) { ghostDp.toPx() }
+            val offsetX = with(density) { (ds.position.x - ghostPx / 2).toDp() }
+            val offsetY = with(density) { (ds.position.y - ghostPx / 2).toDp() }
             Box(
                 Modifier
-                    .offset {
-                        IntOffset(
-                            (ds.position.x - ghostPx / 2).roundToInt(),
-                            (ds.position.y - ghostPx / 2).roundToInt(),
-                        )
-                    }
+                    .offset(x = offsetX, y = offsetY)
                     .size(ghostDp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(SlotFilled)
