@@ -54,6 +54,8 @@ data class AndroidPokemonDto(
     val move4Type: String = "",
     val rawData: ByteArray? = null,
     val rawDataFormat: String? = null,
+    val heldItemId: Int = 0,
+    val heldItemName: String? = null,
 )
 
 @JsonClass(generateAdapter = true)

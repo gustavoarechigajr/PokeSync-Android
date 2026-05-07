@@ -25,6 +25,8 @@ data class Pokemon(
     val statSpd: Int = 0,
     val statSpe: Int = 0,
     val moves: List<PokemonMove> = emptyList(),
+    val heldItemId: Int = 0,
+    val heldItemName: String? = null,
 ) {
     val displayName: String get() = if (!nickname.isNullOrBlank() && nickname != species) nickname else species
     val genderSymbol: String? get() = when (gender) { "M" -> "♂"; "F" -> "♀"; else -> null }

@@ -119,5 +119,7 @@ class PokemonRepository @Inject constructor(
             move3Name to move3Type,
             move4Name to move4Type,
         ).filter { it.first.isNotBlank() }.map { (name, type) -> PokemonMove(name, type) },
+        heldItemId = heldItemId,
+        heldItemName = heldItemName,
     )
 }

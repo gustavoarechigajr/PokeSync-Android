@@ -914,6 +914,8 @@ private fun SummaryContent(
                         InfoRow("Level", pokemon.level.toString())
                         pokemon.nature?.let { InfoRow("Nature", it) }
                         if (pokemon.type1.isNotBlank()) InfoRow("Type", pokemon.typeString)
+                        if (pokemon.heldItemId > 0 && !pokemon.heldItemName.isNullOrBlank())
+                            InfoRow("Item", pokemon.heldItemName)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
