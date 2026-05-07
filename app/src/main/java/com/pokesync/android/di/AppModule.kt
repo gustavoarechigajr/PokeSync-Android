@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.pokesync.android.data.api.Base64ByteArrayAdapter
 import com.pokesync.android.data.api.PokeSyncApi
 import com.pokesync.android.data.local.AuthStore
 import com.squareup.moshi.Moshi
@@ -20,6 +21,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "pokesync_prefs")
@@ -36,12 +38,16 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
+        .add(ByteArray::class.java, Base64ByteArrayAdapter())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
     @Provides
     @Singleton
     fun provideOkHttpClient(authStore: AuthStore): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         // Rewrite the base URL on every request so changing the server URL field takes effect immediately
         .addInterceptor { chain ->
             val serverUrl = runBlocking {
