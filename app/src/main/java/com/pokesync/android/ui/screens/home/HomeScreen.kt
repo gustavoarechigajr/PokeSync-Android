@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -170,23 +171,29 @@ fun HomeScreen(
 
     // Drag and drop state
     var dragState by remember { mutableStateOf<DragState?>(null) }
+    var leftPanelBounds by remember { mutableStateOf<Rect?>(null) }
     var rightPanelBounds by remember { mutableStateOf<Rect?>(null) }
     var rightGridBounds by remember { mutableStateOf<Rect?>(null) }
 
     fun handleDrop(ds: DragState) {
-        val rpb = rightPanelBounds ?: return
-        if (!rpb.contains(ds.position)) return
+        val inRight = rightPanelBounds?.contains(ds.position) == true
+        val inLeft = leftPanelBounds?.contains(ds.position) == true
         when (ds.source) {
-            HomeTab.Save -> viewModel.addPokemonToVault(ds.pokemon)
-            HomeTab.Bank -> {
-                val gb = rightGridBounds ?: return
-                if (!gb.contains(ds.position)) return
-                val cols = 4
-                val rows = (SLOTS_PER_BOX + cols - 1) / cols
-                val col = ((ds.position.x - gb.left) / (gb.width / cols)).toInt().coerceIn(0, cols - 1)
-                val row = ((ds.position.y - gb.top) / (gb.height / rows)).toInt().coerceIn(0, rows - 1)
-                val slot = (row * cols + col).coerceIn(0, SLOTS_PER_BOX - 1)
-                viewModel.onVaultSlotDrop(ds.pokemon, ui.bankBox, slot)
+            HomeTab.Save -> {
+                if (inRight) viewModel.addPokemonToVault(ds.pokemon)
+            }
+            HomeTab.Bank -> when {
+                inRight -> {
+                    val gb = rightGridBounds ?: return
+                    if (!gb.contains(ds.position)) return
+                    val cols = 4
+                    val rows = (SLOTS_PER_BOX + cols - 1) / cols
+                    val col = ((ds.position.x - gb.left) / (gb.width / cols)).toInt().coerceIn(0, cols - 1)
+                    val row = ((ds.position.y - gb.top) / (gb.height / rows)).toInt().coerceIn(0, rows - 1)
+                    val slot = (row * cols + col).coerceIn(0, SLOTS_PER_BOX - 1)
+                    viewModel.onVaultSlotDrop(ds.pokemon, ui.bankBox, slot)
+                }
+                inLeft -> viewModel.exportToSave(ds.pokemon.id)
             }
         }
     }
@@ -225,14 +232,19 @@ fun HomeScreen(
             Modifier.fillMaxSize().padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // LEFT panel
-            HomePanel(Modifier.weight(1f)) {
+            // LEFT panel — track bounds for drop detection (export from vault → save)
+            HomePanel(
+                Modifier
+                    .weight(1f)
+                    .onGloballyPositioned { leftPanelBounds = it.boundsInWindow() }
+            ) {
                 if (selectedFromBank) {
                     SummaryContent(
                         pokemon = ui.selectedPokemon!!,
                         onClose = { viewModel.selectPokemon(null, null) },
                         onAddToVault = null,
                         onExportToSave = { viewModel.exportToSave(ui.selectedPokemon!!.id) },
+                        onDelete = { viewModel.requestDeletePokemon(ui.selectedPokemon!!) },
                     )
                 } else {
                     SaveContent(
@@ -243,6 +255,7 @@ fun HomeScreen(
                         onOpenSettings = { showSettings = true },
                         onToggleDropdown = { showSaveDropdown = !showSaveDropdown },
                         onSelectSave = { viewModel.selectSave(it); showSaveDropdown = false },
+                        onRemoveSave = { viewModel.removeSave(it); showSaveDropdown = false },
                         onPrev = viewModel::prevSaveBox,
                         onNext = viewModel::nextSaveBox,
                         onSelectBox = { },
@@ -351,6 +364,33 @@ fun HomeScreen(
         }
     }
 
+    if (ui.pokemonToDelete != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::cancelDelete,
+            title = { Text("Delete Pokémon") },
+            text = {
+                Text(
+                    "This will permanently remove ${ui.pokemonToDelete!!.displayName} from your vault. " +
+                    "This action cannot be undone.",
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = viewModel::confirmDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = RedLabel),
+                ) {
+                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = viewModel::cancelDelete) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     if (showPermissionDialog) {
         RequestAllFilesAccessDialog(onDismiss = { showPermissionDialog = false })
     }
@@ -381,6 +421,7 @@ private fun SaveContent(
     onOpenSettings: () -> Unit,
     onToggleDropdown: () -> Unit,
     onSelectSave: (RegisteredSave) -> Unit,
+    onRemoveSave: (String) -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onSelectBox: (Int) -> Unit,
@@ -429,6 +470,11 @@ private fun SaveContent(
                                 }
                             },
                             onClick = { onSelectSave(save) },
+                            trailingIcon = {
+                                IconButton(onClick = { onRemoveSave(save.id) }) {
+                                    Icon(Icons.Default.Close, "Remove save", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                }
+                            },
                         )
                     }
                     if (saves.isEmpty()) {
@@ -734,6 +780,7 @@ private fun SummaryContent(
     onClose: () -> Unit,
     onAddToVault: (() -> Unit)?,
     onExportToSave: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxSize()) {
         // Header row
@@ -771,6 +818,16 @@ private fun SummaryContent(
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text("Export", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            if (onDelete != null) {
+                Button(
+                    onClick = onDelete,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RedLabel),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                ) {
+                    Text("×", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
