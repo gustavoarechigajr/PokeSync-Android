@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ConnectUiState(
-    val serverUrl: String = "https://pokesync.arechigacdguzman.com",
+    val serverUrl: String = "",
     val username: String = "",
     val password: String = "",
     val isLoading: Boolean = false,

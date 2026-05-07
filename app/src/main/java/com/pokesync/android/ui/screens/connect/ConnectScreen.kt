@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,8 +35,10 @@ fun ConnectScreen(
     val state by viewModel.uiState.collectAsState()
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedTextColor = Color.Black,
+        unfocusedTextColor = Color.Black,
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
         focusedLabelColor = MaterialTheme.colorScheme.primary,
         unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
         focusedBorderColor = MaterialTheme.colorScheme.primary,

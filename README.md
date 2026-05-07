@@ -29,6 +29,11 @@ PokeSync Android connects to your self-hosted PokeSync server, scans your device
 - **Save registry** — add a save once, the app remembers it forever
 - **One-tap sync** — tap Sync on any registered save to re-upload the latest version from your device
 - **Browse Pokémon** — view your full box roster with species, level, shiny status, nature, and moves
+- **Vault** — personal Pokémon bank decoupled from any specific save
+- **Drag-and-drop transfer** between save and vault (or vault and save)
+- **Cross-game format conversion** — PA8/PB8/PK8/PK9 etc., preserving moves and held items
+- **Pre-transfer compatibility check** — blocks transfers the destination game can't render and surfaces a clear error
+- **Held item display** in the summary panel
 - **Save as backup** — every sync keeps a server-side copy, recoverable if your device file is lost
 - **Manual file picker** — pick any save file via the system browser as a fallback
 - **Secure auth** — JWT token stored in hardware-backed EncryptedSharedPreferences
@@ -42,7 +47,7 @@ PokeSync Android connects to your self-hosted PokeSync server, scans your device
 ## Setup
 
 1. Install the APK on your device
-2. Open the app and enter your PokeSync server URL
+2. Open the app and type your PokeSync server URL into the empty field (e.g. `http://10.0.0.10:5100` on LAN, or `https://pokesync.<your-domain>` for a Cloudflare-Tunnel setup)
 3. Register or log in
 4. Tap **Scan Emulators** to find your save files, or **Pick File Manually**
 5. Tap **Sync** any time to push the latest save to the server
@@ -59,6 +64,36 @@ PokeSync Android connects to your self-hosted PokeSync server, scans your device
 | Image loading | Coil |
 | Storage | DataStore + EncryptedSharedPreferences |
 | Auth | JWT via EncryptedSharedPreferences (AES256-GCM) |
+
+## Building from source
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/gustavoarechigajr/PokeSync-Android.git
+   cd PokeSync-Android
+   ```
+
+2. Install **Android Studio** — its bundled JetBrains Runtime (JBR) provides JDK 17.
+
+3. Set `JAVA_HOME` to the bundled JBR (or build from inside Android Studio):
+   ```bash
+   export JAVA_HOME=/path/to/android-studio/jbr
+   # On Linux this is typically ~/android-studio/jbr
+   # On macOS: /Applications/Android Studio.app/Contents/jbr/Contents/Home
+   ```
+   Make this permanent by adding the export to `~/.profile`.
+
+4. Build the debug APK:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+
+5. Install on a connected device:
+   ```bash
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+Current version: **0.2.0**.
 
 ## Related
 
