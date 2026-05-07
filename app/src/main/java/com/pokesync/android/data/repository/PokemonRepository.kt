@@ -17,6 +17,7 @@ data class UploadResult(
     val gameVersion: String,
     val generation: Int,
     val trainerName: String,
+    val boxCount: Int,
     val pokemon: List<Pokemon>,
 )
 
@@ -25,13 +26,11 @@ class PokemonRepository @Inject constructor(
     private val api: PokeSyncApi,
     private val saveFileRepository: SaveFileRepository,
 ) {
-    /** Upload from an absolute file path (MANAGE_EXTERNAL_STORAGE path). */
     suspend fun uploadSaveFromPath(path: String): UploadResult {
         val bytes = File(path).readBytes()
         return upload(bytes, File(path).name)
     }
 
-    /** Upload from a SAF URI (fallback when full storage access is not granted). */
     suspend fun uploadSaveFromUri(uri: Uri): UploadResult {
         val bytes = saveFileRepository.readBytes(uri)
         val name = saveFileRepository.resolveSaveFile(uri)?.displayName ?: "save.bin"
@@ -40,6 +39,18 @@ class PokemonRepository @Inject constructor(
 
     suspend fun getSavePokemon(saveId: String): List<Pokemon> =
         api.getSavePokemon(saveId).map { it.toDomain() }
+
+    suspend fun getVault(): List<Pokemon> =
+        api.getVault().map { it.toDomain() }
+
+    suspend fun importToVault(saveId: String, replace: Boolean = false): List<Pokemon> =
+        api.importToVault(saveId, replace).map { it.toDomain() }
+
+    suspend fun removeFromVault(id: String) =
+        api.removeFromVault(id)
+
+    suspend fun moveVaultPokemon(id: String, box: Int, slot: Int) =
+        api.moveVaultPokemon(id, box, slot)
 
     private suspend fun upload(bytes: ByteArray, filename: String): UploadResult {
         val requestBody = bytes.toRequestBody("application/octet-stream".toMediaType())
@@ -50,27 +61,27 @@ class PokemonRepository @Inject constructor(
             gameVersion = response.gameVersion,
             generation = response.generation,
             trainerName = response.trainerName,
+            boxCount = response.boxCount,
             pokemon = response.pokemon.map { it.toDomain() },
         )
     }
 
     private fun AndroidPokemonDto.toDomain() = Pokemon(
         id = id,
+        speciesId = speciesId,
         species = speciesName,
         nickname = nickname.takeIf { isNicknamed },
         level = level,
         isShiny = isShiny,
         gender = when (gender) { 0 -> "M"; 1 -> "F"; else -> null },
         nature = nature,
-        ability = null,
-        moves = listOfNotNull(
-            move1.takeIf { it != 0 }?.toString(),
-            move2.takeIf { it != 0 }?.toString(),
-            move3.takeIf { it != 0 }?.toString(),
-            move4.takeIf { it != 0 }?.toString(),
-        ),
-        heldItem = null,
+        ball = ball,
         generation = generation,
-        spriteUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$speciesId.png",
+        box = box,
+        slot = slot,
+        spriteUrl = if (isShiny)
+            "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$speciesId.png"
+        else
+            "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$speciesId.png",
     )
 }

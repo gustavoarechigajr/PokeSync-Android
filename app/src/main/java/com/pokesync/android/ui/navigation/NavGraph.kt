@@ -9,14 +9,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pokesync.android.data.local.AuthStore
 import com.pokesync.android.ui.screens.connect.ConnectScreen
-import com.pokesync.android.ui.screens.saves.SavesScreen
-import com.pokesync.android.ui.screens.transfer.TransferScreen
-import com.pokesync.android.ui.screens.vault.VaultScreen
-import dagger.hilt.android.EntryPointAccessors
-import androidx.compose.ui.platform.LocalContext
+import com.pokesync.android.ui.screens.home.HomeScreen
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import androidx.compose.ui.platform.LocalContext
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -26,11 +24,7 @@ interface AuthStoreEntryPoint {
 
 sealed class Screen(val route: String) {
     data object Connect : Screen("connect")
-    data object Vault : Screen("vault")
-    data object Saves : Screen("saves")
-    data object Transfer : Screen("transfer/{saveId}") {
-        fun createRoute(saveId: String) = "transfer/$saveId"
-    }
+    data object Home : Screen("home")
 }
 
 @Composable
@@ -43,29 +37,19 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
         ).authStore()
     }
 
-    val startDestination = if (authStore.isLoggedIn()) Screen.Vault.route else Screen.Connect.route
-
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = if (authStore.isLoggedIn()) Screen.Home.route else Screen.Connect.route,
+    ) {
         composable(Screen.Connect.route) {
             ConnectScreen(onConnected = {
-                navController.navigate(Screen.Vault.route) {
+                navController.navigate(Screen.Home.route) {
                     popUpTo(Screen.Connect.route) { inclusive = true }
                 }
             })
         }
-        composable(Screen.Vault.route) {
-            VaultScreen(onOpenSaves = { navController.navigate(Screen.Saves.route) })
-        }
-        composable(Screen.Saves.route) {
-            SavesScreen(
-                onBrowsePokemon = { saveId ->
-                    navController.navigate(Screen.Transfer.createRoute(saveId))
-                }
-            )
-        }
-        composable(Screen.Transfer.route) { backStackEntry ->
-            val saveId = backStackEntry.arguments?.getString("saveId") ?: return@composable
-            TransferScreen(saveId = saveId, onBack = { navController.popBackStack() })
+        composable(Screen.Home.route) {
+            HomeScreen()
         }
     }
 }

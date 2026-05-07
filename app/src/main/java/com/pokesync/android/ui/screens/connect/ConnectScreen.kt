@@ -14,6 +14,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,6 +33,16 @@ fun ConnectScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        cursorColor = MaterialTheme.colorScheme.primary,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -48,6 +59,7 @@ fun ConnectScreen(
             label = { Text("Server URL") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            colors = textFieldColors,
         )
         Spacer(Modifier.height(12.dp))
 
@@ -56,6 +68,7 @@ fun ConnectScreen(
             onValueChange = viewModel::onUsernameChange,
             label = { Text("Username") },
             modifier = Modifier.fillMaxWidth(),
+            colors = textFieldColors,
         )
         Spacer(Modifier.height(12.dp))
 
@@ -66,6 +79,7 @@ fun ConnectScreen(
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            colors = textFieldColors,
         )
         Spacer(Modifier.height(24.dp))
 

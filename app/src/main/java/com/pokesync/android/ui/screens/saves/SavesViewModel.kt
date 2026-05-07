@@ -139,7 +139,7 @@ class SavesViewModel @Inject constructor(
                     registry.add(
                         buildEntry(
                             path = detected.file.absolutePath,
-                            fallbackName = detected.file.nameWithoutExtension,
+                            fallbackName = detected.gameName ?: detected.file.nameWithoutExtension,
                             emulator = detected.emulator,
                             result = result,
                         )

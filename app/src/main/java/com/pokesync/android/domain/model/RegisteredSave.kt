@@ -8,8 +8,8 @@ data class RegisteredSave(
     val gameVersion: String?,
     val generation: Int?,
     val trainerName: String?,
+    val boxCount: Int? = null,
     val addedAt: Long,
     val lastRefreshedAt: Long?,
-    // last saveId returned from server (valid ~2hr, re-uploaded on next refresh)
     val lastSaveId: String?,
 )

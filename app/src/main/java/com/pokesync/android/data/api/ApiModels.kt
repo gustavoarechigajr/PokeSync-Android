@@ -48,3 +48,8 @@ data class AndroidSaveResponse(
     val pokemonCount: Int,
     val pokemon: List<AndroidPokemonDto>,
 )
+
+@JsonClass(generateAdapter = true)
+data class VaultImportRequest(
+    val saveId: String,
+)

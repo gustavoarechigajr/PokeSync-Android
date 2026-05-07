@@ -22,6 +22,7 @@ data class RegisteredSaveJson(
     val gameVersion: String?,
     val generation: Int?,
     val trainerName: String?,
+    val boxCount: Int? = null,
     val addedAt: Long,
     val lastRefreshedAt: Long?,
     val lastSaveId: String?,
@@ -72,11 +73,11 @@ class SaveRegistry @Inject constructor(
 
     private fun RegisteredSaveJson.toDomain() = RegisteredSave(
         id, absolutePath, displayName, emulator, gameVersion,
-        generation, trainerName, addedAt, lastRefreshedAt, lastSaveId,
+        generation, trainerName, boxCount, addedAt, lastRefreshedAt, lastSaveId,
     )
 
     private fun RegisteredSave.toJson() = RegisteredSaveJson(
         id, absolutePath, displayName, emulator, gameVersion,
-        generation, trainerName, addedAt, lastRefreshedAt, lastSaveId,
+        generation, trainerName, boxCount, addedAt, lastRefreshedAt, lastSaveId,
     )
 }

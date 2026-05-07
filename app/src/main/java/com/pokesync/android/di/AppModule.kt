@@ -16,6 +16,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -41,6 +42,19 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(authStore: AuthStore): OkHttpClient = OkHttpClient.Builder()
+        // Rewrite the base URL on every request so changing the server URL field takes effect immediately
+        .addInterceptor { chain ->
+            val serverUrl = runBlocking {
+                authStore.serverUrl.first() ?: "http://localhost/"
+            }.trimEnd('/') + "/"
+            val parsed = serverUrl.toHttpUrl()
+            val newUrl = chain.request().url.newBuilder()
+                .scheme(parsed.scheme)
+                .host(parsed.host)
+                .port(parsed.port)
+                .build()
+            chain.proceed(chain.request().newBuilder().url(newUrl).build())
+        }
         .addInterceptor { chain ->
             val token = authStore.token
             val request = if (token != null) {
@@ -59,20 +73,12 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(
-        okHttpClient: OkHttpClient,
-        moshi: Moshi,
-        authStore: AuthStore,
-    ): Retrofit {
-        val baseUrl = runBlocking {
-            authStore.serverUrl.first() ?: "http://pokesync.arechigawinpc.duckdns.org/"
-        }
-        return Retrofit.Builder()
-            .baseUrl(baseUrl)
+    fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("http://localhost/") // overridden per-request by the URL interceptor
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-    }
 
     @Provides
     @Singleton

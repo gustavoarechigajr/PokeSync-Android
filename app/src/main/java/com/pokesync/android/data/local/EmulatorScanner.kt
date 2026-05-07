@@ -9,12 +9,14 @@ data class EmulatorConfig(
     val name: String,
     val saveDirs: List<String>,
     val extensions: List<String>,
+    val exactNames: List<String> = emptyList(), // extensionless files to match by name
     val note: String? = null,
 )
 
 data class DetectedSaveFile(
     val file: File,
     val emulator: String,
+    val gameName: String? = null,
 )
 
 @Singleton
@@ -32,10 +34,11 @@ class EmulatorScanner @Inject constructor() {
             EmulatorConfig(
                 name = "Azahar",
                 saveDirs = listOf(
-                    "$root/Azahar",
-                    "$root/Android/data/org.citra_emu.azahar/files",
+                    "$root/Azahar/sdmc/Nintendo 3DS",
+                    "$root/Android/data/org.citra_emu.azahar/files/sdmc/Nintendo 3DS",
                 ),
-                extensions = listOf("sav", "bin"),
+                extensions = listOf("sav"),
+                exactNames = listOf("main"), // 3DS cartridge save — no extension
             ),
             EmulatorConfig(
                 name = "Eden",
@@ -104,12 +107,37 @@ class EmulatorScanner @Inject constructor() {
         results: MutableList<DetectedSaveFile>,
         depth: Int,
     ) {
-        if (depth > 6) return
+        if (depth > 8) return
         dir.listFiles()?.forEach { file ->
             when {
                 file.isDirectory -> scanDir(file, config, results, depth + 1)
-                file.extension.lowercase() in config.extensions && isPokemonSaveSize(file) ->
-                    results.add(DetectedSaveFile(file, config.name))
+                (file.extension.lowercase() in config.extensions ||
+                    file.name in config.exactNames) && isPokemonSaveSize(file) -> {
+                    val detected = tryResolvePokemon(file, config) ?: return@forEach
+                    results.add(detected)
+                }
+            }
+        }
+    }
+
+    private fun tryResolvePokemon(file: File, config: EmulatorConfig): DetectedSaveFile? {
+        return when (config.name) {
+            "Eden" -> {
+                // Eden path: .../nand/user/save/{userId16}/{titleId16}/{saveType}/file.bin
+                // titleId is a single 16-char hex segment in the path
+                val match = PokemonTitleDatabase.resolveFromPath(file) ?: return null
+                DetectedSaveFile(file, config.name, match.gameName)
+            }
+            "Azahar" -> {
+                // Azahar path: .../title/00040000/0011c400/data/00000001/main
+                // titleId is split across two consecutive 8-char hex path segments
+                val match = PokemonTitleDatabase.resolveFromSplitPath(file)
+                    ?: PokemonTitleDatabase.resolveFromPath(file)
+                    ?: return null
+                DetectedSaveFile(file, config.name, match.gameName)
+            }
+            else -> {
+                DetectedSaveFile(file, config.name, gameName = null)
             }
         }
     }

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
@@ -273,7 +275,11 @@ private fun AddSaveSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
             Text("Add Save File", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
 
@@ -305,12 +311,16 @@ private fun AddSaveSheet(
                         )
                         files.forEach { file ->
                             ListItem(
-                                headlineContent = { Text(file.file.nameWithoutExtension) },
+                                headlineContent = {
+                                    Text(file.gameName ?: file.file.nameWithoutExtension)
+                                },
                                 supportingContent = {
-                                    Text(
-                                        file.file.parentFile?.name ?: "",
-                                        style = MaterialTheme.typography.labelSmall,
-                                    )
+                                    val sub = file.gameName
+                                        ?.let { file.file.nameWithoutExtension }
+                                        ?: file.file.parentFile?.name
+                                    if (sub != null) {
+                                        Text(sub, style = MaterialTheme.typography.labelSmall)
+                                    }
                                 },
                                 trailingContent = {
                                     IconButton(onClick = { onSelect(file); onDismiss() }) {
