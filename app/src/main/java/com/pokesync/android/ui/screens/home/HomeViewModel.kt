@@ -272,6 +272,41 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /// Exports a vault Pokémon into the active save at the current box's first empty slot.
+    fun exportToSave(vaultPokemonId: String) {
+        val activeSave = _ui.value.activeSave ?: return
+        val saveId = activeSave.lastSaveId ?: return
+        val targetBox = _ui.value.saveBox
+
+        // Find the first empty slot in the current save box
+        val occupiedSlots = _ui.value.savePokemon
+            .filter { it.box == targetBox }
+            .map { it.slot }
+            .toSet()
+        val targetSlot = (0 until 30).firstOrNull { it !in occupiedSlots } ?: run {
+            _ui.update { it.copy(globalError = "Current box is full. Switch to another box.") }
+            return
+        }
+
+        _ui.update { it.copy(isSaveLoading = true) }
+        viewModelScope.launch {
+            runCatching { repository.exportToSave(vaultPokemonId, saveId, targetBox, targetSlot) }
+                .onSuccess { modifiedBytes ->
+                    // Write the modified save back to the device
+                    val file = java.io.File(activeSave.absolutePath)
+                    runCatching { file.parentFile?.mkdirs(); file.writeBytes(modifiedBytes) }
+                        .onFailure { e ->
+                            _ui.update { it.copy(globalError = "Exported by server, but failed to write back: ${e.message}") }
+                        }
+                    // Refresh to show the changes
+                    syncActiveSave()
+                }
+                .onFailure { e ->
+                    _ui.update { it.copy(isSaveLoading = false, globalError = e.message) }
+                }
+        }
+    }
+
     fun clearError() = _ui.update { it.copy(globalError = null) }
 
     private fun buildEntry(path: String, fallbackName: String, emulator: String, result: UploadResult) =

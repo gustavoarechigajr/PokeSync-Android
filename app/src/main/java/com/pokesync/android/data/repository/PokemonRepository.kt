@@ -56,6 +56,17 @@ class PokemonRepository @Inject constructor(
     suspend fun moveVaultPokemon(id: String, box: Int, slot: Int) =
         api.moveVaultPokemon(id, box, slot)
 
+    /**
+     * Exports a vault Pokémon into a cached save file at the specified box/slot.
+     * @return the modified save file bytes, ready to write back to device storage via SAF.
+     */
+    suspend fun exportToSave(
+        vaultPokemonId: String,
+        saveId: String,
+        targetBox: Int,
+        targetSlot: Int,
+    ): ByteArray = api.exportVaultPokemonToSave(vaultPokemonId, saveId, targetBox, targetSlot).bytes()
+
     private suspend fun upload(bytes: ByteArray, filename: String): UploadResult {
         val requestBody = bytes.toRequestBody("application/octet-stream".toMediaType())
         val part = MultipartBody.Part.createFormData("file", filename, requestBody)

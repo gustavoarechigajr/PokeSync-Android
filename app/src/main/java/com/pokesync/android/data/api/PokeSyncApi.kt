@@ -1,6 +1,7 @@
 package com.pokesync.android.data.api
 
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -10,6 +11,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface PokeSyncApi {
 
@@ -54,4 +56,14 @@ interface PokeSyncApi {
         @Query("box") box: Int,
         @Query("slot") slot: Int,
     )
+
+    /// Exports a vault Pokémon into a cached save and returns the modified save file.
+    @Streaming
+    @POST("api/android/vault/{vaultId}/export")
+    suspend fun exportVaultPokemonToSave(
+        @Path("vaultId") vaultId: String,
+        @Query("saveId") saveId: String,
+        @Query("box") box: Int,
+        @Query("slot") slot: Int,
+    ): ResponseBody
 }

@@ -52,6 +52,8 @@ data class AndroidPokemonDto(
     val move2Type: String = "",
     val move3Type: String = "",
     val move4Type: String = "",
+    val rawData: ByteArray? = null,
+    val rawDataFormat: String? = null,
 )
 
 @JsonClass(generateAdapter = true)

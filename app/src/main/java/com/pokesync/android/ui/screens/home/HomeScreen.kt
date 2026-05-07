@@ -232,6 +232,7 @@ fun HomeScreen(
                         pokemon = ui.selectedPokemon!!,
                         onClose = { viewModel.selectPokemon(null, null) },
                         onAddToVault = null,
+                        onExportToSave = { viewModel.exportToSave(ui.selectedPokemon!!.id) },
                     )
                 } else {
                     SaveContent(
@@ -728,7 +729,12 @@ private fun BoxThumbnailGrid(
 // ── Summary panel ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun SummaryContent(pokemon: Pokemon, onClose: () -> Unit, onAddToVault: (() -> Unit)?) {
+private fun SummaryContent(
+    pokemon: Pokemon,
+    onClose: () -> Unit,
+    onAddToVault: (() -> Unit)?,
+    onExportToSave: (() -> Unit)? = null,
+) {
     Column(Modifier.fillMaxSize()) {
         // Header row
         Row(
@@ -755,6 +761,16 @@ private fun SummaryContent(pokemon: Pokemon, onClose: () -> Unit, onAddToVault: 
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text("+ Vault", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            if (onExportToSave != null) {
+                Button(
+                    onClick = onExportToSave,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HeaderPill),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                ) {
+                    Text("Export", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
