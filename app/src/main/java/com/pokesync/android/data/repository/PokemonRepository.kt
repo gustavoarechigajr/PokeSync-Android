@@ -5,6 +5,7 @@ import com.pokesync.android.data.api.AndroidPokemonDto
 import com.pokesync.android.data.api.PokeSyncApi
 import com.pokesync.android.data.local.SaveFileRepository
 import com.pokesync.android.domain.model.Pokemon
+import com.pokesync.android.domain.model.PokemonMove
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -83,5 +84,19 @@ class PokemonRepository @Inject constructor(
             "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$speciesId.png"
         else
             "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$speciesId.png",
+        type1 = type1,
+        type2 = type2,
+        statHp = statHp,
+        statAtk = statAtk,
+        statDef = statDef,
+        statSpa = statSpa,
+        statSpd = statSpd,
+        statSpe = statSpe,
+        moves = listOf(
+            move1Name to move1Type,
+            move2Name to move2Type,
+            move3Name to move3Type,
+            move4Name to move4Type,
+        ).filter { it.first.isNotBlank() }.map { (name, type) -> PokemonMove(name, type) },
     )
 }

@@ -36,6 +36,22 @@ data class AndroidPokemonDto(
     val move2: Int,
     val move3: Int,
     val move4: Int,
+    val type1: String = "",
+    val type2: String? = null,
+    val statHp: Int = 0,
+    val statAtk: Int = 0,
+    val statDef: Int = 0,
+    val statSpa: Int = 0,
+    val statSpd: Int = 0,
+    val statSpe: Int = 0,
+    val move1Name: String = "",
+    val move2Name: String = "",
+    val move3Name: String = "",
+    val move4Name: String = "",
+    val move1Type: String = "",
+    val move2Type: String = "",
+    val move3Type: String = "",
+    val move4Type: String = "",
 )
 
 @JsonClass(generateAdapter = true)
@@ -45,6 +61,7 @@ data class AndroidSaveResponse(
     val generation: Int,
     val trainerName: String,
     val boxCount: Int,
+    val boxSlotCount: Int = 30,
     val pokemonCount: Int,
     val pokemon: List<AndroidPokemonDto>,
 )

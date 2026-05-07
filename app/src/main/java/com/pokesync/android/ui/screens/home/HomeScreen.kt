@@ -1,11 +1,17 @@
 package com.pokesync.android.ui.screens.home
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,337 +19,225 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.pokesync.android.data.local.DetectedSaveFile
 import com.pokesync.android.domain.model.Pokemon
+import com.pokesync.android.domain.model.PokemonMove
 import com.pokesync.android.domain.model.RegisteredSave
 import com.pokesync.android.ui.permission.RequestAllFilesAccessDialog
 import com.pokesync.android.ui.permission.hasAllFilesAccess
 import com.pokesync.android.ui.theme.HomeYellow
-import kotlinx.coroutines.launch
+import kotlin.math.cos
+import kotlin.math.sin
 
-private data class DragInfo(
-    val pokemon: Pokemon,
-    val source: HomeTab,
+// ── Type color palette ─────────────────────────────────────────────────────────
+
+private val typeColorMap = mapOf(
+    "Normal"   to Color(0xFFA8A878),
+    "Fire"     to Color(0xFFF08030),
+    "Water"    to Color(0xFF6890F0),
+    "Electric" to Color(0xFFF8D030),
+    "Grass"    to Color(0xFF78C850),
+    "Ice"      to Color(0xFF98D8D8),
+    "Fighting" to Color(0xFFC03028),
+    "Poison"   to Color(0xFFA040A0),
+    "Ground"   to Color(0xFFE0C068),
+    "Flying"   to Color(0xFFA890F0),
+    "Psychic"  to Color(0xFFF85888),
+    "Bug"      to Color(0xFFA8B820),
+    "Rock"     to Color(0xFFB8A038),
+    "Ghost"    to Color(0xFF705898),
+    "Dragon"   to Color(0xFF7038F8),
+    "Dark"     to Color(0xFF705848),
+    "Steel"    to Color(0xFFB8B8D0),
+    "Fairy"    to Color(0xFFEE99AC),
 )
+
+private fun typeColor(type: String) = typeColorMap[type] ?: Color(0xFFA8A878)
+
+// ── Colours ────────────────────────────────────────────────────────────────────
+
+private val BgGradient   = Brush.linearGradient(listOf(Color(0xFF3EBDAD), Color(0xFF72E8D8)))
+private val PanelBg      = Color(0xFF4DCFBE).copy(alpha = 0.75f)
+private val SlotEmpty    = Color(0xFF3A9AAA).copy(alpha = 0.6f)
+private val SlotFilled   = Color(0xFF5BC4B8).copy(alpha = 0.5f)
+private val HeaderPill   = Color(0xFF1F7A6E)
+private val RedLabel     = Color(0xFFD32F2F)
+private val SummaryBg    = Color(0xFFCCF0F9)
+private val SelectBorder = Color(0xFF1A4FA0)
+private val SidebarRed   = Brush.verticalGradient(listOf(Color(0xFFCC1111), Color(0xFF880000)))
+
+private const val SLOTS_PER_BOX = 30
+
+// ── Screen ─────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val saves by viewModel.saves.collectAsState()
     val ui by viewModel.ui.collectAsState()
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    var showSettings by remember { mutableStateOf(false) }
+    var showSaveDropdown by remember { mutableStateOf(false) }
+    var isBoxView by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(!hasAllFilesAccess()) }
 
-    // ── Drag state (purely UI, not in ViewModel) ──────────────────────────────
-    var dragInfo by remember { mutableStateOf<DragInfo?>(null) }
-    var dragPosition by remember { mutableStateOf(Offset.Zero) }
-    // Vault tab bounds — for detecting "drop on vault tab" from save panel
-    var vaultTabBounds by remember { mutableStateOf(Rect.Zero) }
-    // Vault slot bounds — for detecting which slot to drop into within vault
-    val vaultSlotBounds = remember { mutableStateMapOf<Int, Rect>() }
-
-    val isDragging = dragInfo != null
+    // Force landscape
+    val activity = LocalContext.current as? Activity
+    SideEffect { activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+    DisposableEffect(Unit) {
+        onDispose { activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+    }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.addFromUri(it) }
     }
-
     LaunchedEffect(ui.globalError) {
         ui.globalError?.let { snackbar.showSnackbar(it); viewModel.clearError() }
     }
 
-    // Drag callbacks passed to both panels
-    val onDragStart = { pokemon: Pokemon, source: HomeTab, startPos: Offset ->
-        dragInfo = DragInfo(pokemon, source)
-        dragPosition = startPos
-    }
-    val onDragMove = { delta: Offset -> dragPosition += delta }
-    val onDragEnd = {
-        val info = dragInfo
-        val pos = dragPosition
-        if (info != null) {
-            when {
-                // Save → Vault: drop on vault tab
-                info.source == HomeTab.Save && vaultTabBounds.contains(pos) -> {
-                    viewModel.importSaveToBank(replace = false)
-                    viewModel.selectTab(HomeTab.Bank)
-                }
-                // Vault → Vault: rearrange within grid
-                info.source == HomeTab.Bank -> {
-                    val targetSlot = vaultSlotBounds.entries
-                        .firstOrNull { (_, rect) -> rect.contains(pos) }
-                        ?.key
-                    if (targetSlot != null) {
-                        viewModel.onVaultSlotDrop(info.pokemon, ui.bankBox, targetSlot)
-                    }
-                }
-            }
-        }
-        dragInfo = null
-    }
-    val onDragCancel = { dragInfo = null }
+    val selectedFromSave = ui.selectedPokemon != null && ui.selectedPokemonSource == HomeTab.Save
+    val selectedFromBank = ui.selectedPokemon != null && ui.selectedPokemonSource == HomeTab.Bank
 
-    Box(Modifier.fillMaxSize()) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                SavesDrawer(
-                    saves = saves,
-                    activeSave = ui.activeSave,
-                    onSelectSave = { viewModel.selectSave(it); scope.launch { drawerState.close() } },
-                    onRemoveSave = viewModel::removeSave,
-                    onAddSave = { scope.launch { drawerState.close() }; viewModel.openAddSheet() },
-                )
-            },
+    Box(Modifier.fillMaxSize().background(BgGradient)) {
+        // ── Two-panel layout ───────────────────────────────────────────────────
+        Row(
+            Modifier.fillMaxSize().padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Open saves")
-                            }
-                        },
-                        title = {
-                            Column {
-                                Text(
-                                    ui.activeSave?.displayName ?: "PokeSync",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                if (ui.activeSave != null) {
-                                    Text(
-                                        ui.activeSave!!.emulator,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                                    )
-                                }
-                            }
-                        },
-                        actions = {
-                            if (ui.isSaveLoading || ui.isBankLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.padding(end = 16.dp).size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp,
-                                )
-                            } else if (ui.selectedTab == HomeTab.Save && ui.activeSave != null) {
-                                IconButton(onClick = viewModel::syncActiveSave) {
-                                    Icon(Icons.Default.Refresh, "Sync save", tint = MaterialTheme.colorScheme.onPrimary)
-                                }
-                            } else if (ui.selectedTab == HomeTab.Bank) {
-                                IconButton(onClick = viewModel::loadBank) {
-                                    Icon(Icons.Default.Refresh, "Refresh vault", tint = MaterialTheme.colorScheme.onPrimary)
-                                }
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
+            // LEFT panel
+            HomePanel(Modifier.weight(1f)) {
+                if (selectedFromBank) {
+                    SummaryContent(
+                        pokemon = ui.selectedPokemon!!,
+                        onClose = { viewModel.selectPokemon(null, null) },
                     )
-                },
-                floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = viewModel::openAddSheet,
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ) {
-                        Icon(Icons.Default.Add, "Add save", tint = MaterialTheme.colorScheme.onPrimary)
-                    }
-                },
-                snackbarHost = { SnackbarHost(snackbar) },
-                containerColor = MaterialTheme.colorScheme.background,
-            ) { padding ->
-                Column(Modifier.fillMaxSize().padding(padding)) {
-                    TabRow(
-                        selectedTabIndex = ui.selectedTab.ordinal,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.primary,
-                    ) {
-                        Tab(
-                            selected = ui.selectedTab == HomeTab.Save,
-                            onClick = { viewModel.selectTab(HomeTab.Save) },
-                            text = { Text(ui.activeSave?.gameVersion ?: "Save") },
-                        )
-                        // Vault tab — also acts as drop target when dragging from save
-                        val vaultTabHighlight = isDragging && dragInfo?.source == HomeTab.Save
-                        Tab(
-                            selected = ui.selectedTab == HomeTab.Bank,
-                            onClick = { viewModel.selectTab(HomeTab.Bank) },
-                            modifier = Modifier
-                                .onGloballyPositioned { vaultTabBounds = it.boundsInRoot() }
-                                .then(
-                                    if (vaultTabHighlight)
-                                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-                                    else Modifier
-                                ),
-                            text = {
-                                Text(if (vaultTabHighlight) "Drop here ▼" else "Vault")
-                            },
-                        )
-                    }
-
-                    when (ui.selectedTab) {
-                        HomeTab.Save -> SavePanel(
-                            pokemon = ui.savePokemon,
-                            currentBox = ui.saveBox,
-                            boxCount = ui.saveBoxCount,
-                            selectedPokemon = ui.selectedPokemon,
-                            isLoading = ui.isSaveLoading,
-                            hasActiveSave = ui.activeSave != null,
-                            isDragging = isDragging,
-                            onPrev = viewModel::prevSaveBox,
-                            onNext = viewModel::nextSaveBox,
-                            onSelectPokemon = { viewModel.selectPokemon(it, HomeTab.Save) },
-                            onAddSave = viewModel::openAddSheet,
-                            onDragStart = { pkm, pos -> onDragStart(pkm, HomeTab.Save, pos) },
-                            onDragMove = onDragMove,
-                            onDragEnd = onDragEnd,
-                            onDragCancel = onDragCancel,
-                        )
-                        HomeTab.Bank -> BankPanel(
-                            pokemon = ui.bankPokemon,
-                            currentBox = ui.bankBox,
-                            boxCount = ui.bankBoxCount,
-                            selectedPokemon = ui.selectedPokemon,
-                            isLoading = ui.isBankLoading,
-                            hasSaveLoaded = ui.activeSave != null,
-                            isDragging = isDragging,
-                            dragPosition = dragPosition,
-                            slotBoundsMap = vaultSlotBounds,
-                            onPrev = viewModel::prevBankBox,
-                            onNext = viewModel::nextBankBox,
-                            onSelectPokemon = { viewModel.selectPokemon(it, HomeTab.Bank) },
-                            onImportSave = { viewModel.importSaveToBank(replace = false) },
-                            onDragStart = { pkm, pos -> onDragStart(pkm, HomeTab.Bank, pos) },
-                            onDragMove = onDragMove,
-                            onDragEnd = onDragEnd,
-                            onDragCancel = onDragCancel,
-                        )
-                    }
+                } else {
+                    SaveContent(
+                        saves = saves,
+                        ui = ui,
+                        isBoxView = isBoxView,
+                        showDropdown = showSaveDropdown,
+                        onOpenSettings = { showSettings = true },
+                        onToggleDropdown = { showSaveDropdown = !showSaveDropdown },
+                        onSelectSave = { viewModel.selectSave(it); showSaveDropdown = false },
+                        onPrev = viewModel::prevSaveBox,
+                        onNext = viewModel::nextSaveBox,
+                        onSelectBox = { /* navigate box in box-view */ },
+                        onSelectPokemon = { viewModel.selectPokemon(it, HomeTab.Save) },
+                        selectedPokemon = ui.selectedPokemon,
+                    )
+                }
+            }
+            // RIGHT panel
+            HomePanel(Modifier.weight(1f)) {
+                if (selectedFromSave) {
+                    SummaryContent(
+                        pokemon = ui.selectedPokemon!!,
+                        onClose = { viewModel.selectPokemon(null, null) },
+                    )
+                } else {
+                    BankContent(
+                        ui = ui,
+                        isBoxView = isBoxView,
+                        onToggleBoxView = { isBoxView = !isBoxView },
+                        onPrev = viewModel::prevBankBox,
+                        onNext = viewModel::nextBankBox,
+                        onSelectBox = { /* navigate box in box-view */ },
+                        onSelectPokemon = { viewModel.selectPokemon(it, HomeTab.Bank) },
+                        onImportSave = { viewModel.importSaveToBank(replace = false) },
+                        selectedPokemon = ui.selectedPokemon,
+                    )
                 }
             }
         }
 
-        // ── Drag ghost overlay ─────────────────────────────────────────────────
-        if (isDragging && dragInfo != null) {
-            AsyncImage(
-                model = dragInfo!!.pokemon.spriteUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(64.dp)
-                    .offset { IntOffset((dragPosition.x - 32.dp.toPx()).toInt(), (dragPosition.y - 32.dp.toPx()).toInt()) }
-                    .alpha(0.85f)
-                    .scale(1.2f),
-            )
-        }
-    }
-
-    // ── Pokémon detail sheet ──────────────────────────────────────────────────
-    if (ui.selectedPokemon != null) {
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.selectPokemon(null, null) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        // ── Settings sidebar overlay ───────────────────────────────────────────
+        AnimatedVisibility(
+            visible = showSettings,
+            enter = slideInHorizontally { -it },
+            exit = slideOutHorizontally { -it },
         ) {
-            PokemonDetailSheet(
-                pokemon = ui.selectedPokemon!!,
-                isBankPokemon = ui.selectedPokemonSource == HomeTab.Bank,
-                onStoreToBankClick = { viewModel.storePokemonInBank(ui.selectedPokemon!!) },
-                onRemoveFromBankClick = { viewModel.removeFromBank(ui.selectedPokemon!!.id) },
-                onDismiss = { viewModel.selectPokemon(null, null) },
+            SettingsSidebar(
+                onClose = { showSettings = false },
+                onManageSaves = { showSettings = false; viewModel.openAddSheet() },
+                onRefreshSaves = { viewModel.syncActiveSave(); showSettings = false },
+                onServerSettings = { showSettings = false },
             )
         }
+
+        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 
-    // ── Add save sheet ────────────────────────────────────────────────────────
+    // ── Add save sheet ─────────────────────────────────────────────────────────
     if (ui.showAddSheet) {
         ModalBottomSheet(
             onDismissRequest = viewModel::closeAddSheet,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            dragHandle = { BottomSheetDefaults.DragHandle() },
         ) {
             AddSaveSheetContent(
                 isScanning = ui.isScanning,
@@ -360,175 +254,198 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     }
 }
 
-// ── Saves drawer ───────────────────────────────────────────────────────────────
+// ── Panel container ────────────────────────────────────────────────────────────
 
 @Composable
-private fun SavesDrawer(
-    saves: List<RegisteredSave>,
-    activeSave: RegisteredSave?,
-    onSelectSave: (RegisteredSave) -> Unit,
-    onRemoveSave: (String) -> Unit,
-    onAddSave: () -> Unit,
-) {
-    ModalDrawerSheet {
-        Column(Modifier.fillMaxSize()) {
-            Text(
-                "PokeSync",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(24.dp, 24.dp, 24.dp, 4.dp),
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                "Save files",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-            )
-            HorizontalDivider()
-            if (saves.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("No saves yet.\nTap + to add one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(Modifier.weight(1f)) {
-                    items(saves, key = { it.id }) { save ->
-                        NavigationDrawerItem(
-                            label = {
-                                Column {
-                                    Text(save.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(
-                                        save.emulator + (save.generation?.let { " • Gen $it" } ?: ""),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            },
-                            selected = save.id == activeSave?.id,
-                            onClick = { onSelectSave(save) },
-                            badge = {
-                                IconButton(onClick = { onRemoveSave(save.id) }, modifier = Modifier.size(32.dp)) {
-                                    Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                                }
-                            },
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                        )
-                    }
-                }
-            }
-            HorizontalDivider()
-            OutlinedButton(onClick = onAddSave, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Add Save File")
-            }
-        }
-    }
+private fun HomePanel(modifier: Modifier, content: @Composable () -> Unit) {
+    Box(
+        modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(16.dp))
+            .background(PanelBg)
+            .padding(8.dp),
+    ) { content() }
 }
 
 // ── Save panel ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SavePanel(
-    pokemon: List<Pokemon>,
-    currentBox: Int,
-    boxCount: Int,
+private fun SaveContent(
+    saves: List<RegisteredSave>,
+    ui: HomeUiState,
+    isBoxView: Boolean,
+    showDropdown: Boolean,
     selectedPokemon: Pokemon?,
-    isLoading: Boolean,
-    hasActiveSave: Boolean,
-    isDragging: Boolean,
+    onOpenSettings: () -> Unit,
+    onToggleDropdown: () -> Unit,
+    onSelectSave: (RegisteredSave) -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
+    onSelectBox: (Int) -> Unit,
     onSelectPokemon: (Pokemon) -> Unit,
-    onAddSave: () -> Unit,
-    onDragStart: (Pokemon, Offset) -> Unit,
-    onDragMove: (Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
 ) {
-    when {
-        !hasActiveSave -> EmptyPanel("No save file loaded.\nTap + to add your first save.", "Add Save", onAddSave)
-        isLoading -> LoadingPanel()
-        else -> BoxGrid(
-            pokemon = pokemon,
-            currentBox = currentBox,
-            boxCount = boxCount,
-            selectedPokemon = selectedPokemon,
-            isDraggable = true,
-            isDragging = isDragging,
-            slotBoundsMap = null,
-            onPrev = onPrev,
-            onNext = onNext,
-            onSelectPokemon = onSelectPokemon,
-            onDragStart = onDragStart,
-            onDragMove = onDragMove,
-            onDragEnd = onDragEnd,
-            onDragCancel = onDragCancel,
+    Column(Modifier.fillMaxSize()) {
+        // Top bar
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Default.Menu, null, tint = Color.White)
+            }
+            IconButton(onClick = onPrev, enabled = ui.saveBox > 0) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+            }
+            Box(Modifier.weight(1f)) {
+                Button(
+                    onClick = onToggleDropdown,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HeaderPill),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        ui.activeSave?.displayName ?: "No save",
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(Icons.Default.ArrowDropDown, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                DropdownMenu(expanded = showDropdown, onDismissRequest = onToggleDropdown) {
+                    saves.forEach { save ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(save.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    save.emulator.let { Text(it, style = MaterialTheme.typography.labelSmall, color = Color.Gray) }
+                                }
+                            },
+                            onClick = { onSelectSave(save) },
+                        )
+                    }
+                    if (saves.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("No saves registered", color = Color.Gray) },
+                            onClick = {},
+                        )
+                    }
+                }
+            }
+            IconButton(onClick = onNext, enabled = ui.saveBox < ui.saveBoxCount - 1) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White)
+            }
+        }
+
+        // Box label
+        Text(
+            "Box ${ui.saveBox + 1}",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 4.dp),
         )
+
+        when {
+            ui.isSaveLoading -> LoadingPanel()
+            ui.activeSave == null -> EmptyPanel("No save loaded.\nTap ≡ → Manage saves to add one.")
+            isBoxView -> BoxThumbnailGrid(
+                allPokemon = ui.savePokemon,
+                currentBox = ui.saveBox,
+                boxCount = ui.saveBoxCount,
+                onSelectBox = onSelectBox,
+            )
+            else -> BoxGrid(
+                pokemon = ui.savePokemon,
+                currentBox = ui.saveBox,
+                selectedPokemon = selectedPokemon,
+                onSelectPokemon = onSelectPokemon,
+            )
+        }
     }
 }
 
 // ── Bank panel ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun BankPanel(
-    pokemon: List<Pokemon>,
-    currentBox: Int,
-    boxCount: Int,
+private fun BankContent(
+    ui: HomeUiState,
+    isBoxView: Boolean,
     selectedPokemon: Pokemon?,
-    isLoading: Boolean,
-    hasSaveLoaded: Boolean,
-    isDragging: Boolean,
-    dragPosition: Offset,
-    slotBoundsMap: MutableMap<Int, Rect>,
+    onToggleBoxView: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
+    onSelectBox: (Int) -> Unit,
     onSelectPokemon: (Pokemon) -> Unit,
     onImportSave: () -> Unit,
-    onDragStart: (Pokemon, Offset) -> Unit,
-    onDragMove: (Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        if (hasSaveLoaded && pokemon.isEmpty() && !isLoading) {
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        // Top bar
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onPrev, enabled = ui.bankBox > 0) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+            }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(HeaderPill)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Vault – Box ${ui.bankBox + 1}", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+            IconButton(onClick = onNext, enabled = ui.bankBox < ui.bankBoxCount - 1) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White)
+            }
+            IconButton(onClick = onToggleBoxView) {
+                Icon(
+                    if (isBoxView) Icons.Default.ViewModule else Icons.Default.GridView,
+                    null,
+                    tint = Color.White,
+                )
+            }
+        }
+
+        when {
+            ui.isBankLoading -> LoadingPanel()
+            isBoxView -> BoxThumbnailGrid(
+                allPokemon = ui.bankPokemon,
+                currentBox = ui.bankBox,
+                boxCount = ui.bankBoxCount,
+                onSelectBox = onSelectBox,
+            )
+            ui.bankPokemon.isEmpty() && ui.activeSave != null -> {
+                Column(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     Text(
-                        "Import your save to store Pokémon permanently in the Vault.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        "Vault is empty.",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge,
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = onImportSave, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                        Text("Import", style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = onImportSave,
+                        colors = ButtonDefaults.buttonColors(containerColor = HeaderPill),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text("Import from save", color = Color.White)
                     }
                 }
             }
-        }
-        when {
-            isLoading && pokemon.isEmpty() -> LoadingPanel()
-            pokemon.isNotEmpty() || isLoading -> BoxGrid(
-                pokemon = pokemon,
-                currentBox = currentBox,
-                boxCount = boxCount,
+            else -> BoxGrid(
+                pokemon = ui.bankPokemon,
+                currentBox = ui.bankBox,
                 selectedPokemon = selectedPokemon,
-                isDraggable = true,
-                isDragging = isDragging,
-                slotBoundsMap = slotBoundsMap,
-                onPrev = onPrev,
-                onNext = onNext,
                 onSelectPokemon = onSelectPokemon,
-                onDragStart = onDragStart,
-                onDragMove = onDragMove,
-                onDragEnd = onDragEnd,
-                onDragCancel = onDragCancel,
             )
-            !hasSaveLoaded -> EmptyPanel("Your Vault is empty.\nLoad a save and import Pokémon.", null, null)
         }
     }
 }
@@ -539,232 +456,359 @@ private fun BankPanel(
 private fun BoxGrid(
     pokemon: List<Pokemon>,
     currentBox: Int,
-    boxCount: Int,
     selectedPokemon: Pokemon?,
-    isDraggable: Boolean,
-    isDragging: Boolean,
-    slotBoundsMap: MutableMap<Int, Rect>?,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
     onSelectPokemon: (Pokemon) -> Unit,
-    onDragStart: (Pokemon, Offset) -> Unit,
-    onDragMove: (Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
 ) {
     val slots = remember(pokemon, currentBox) {
-        val arr = arrayOfNulls<Pokemon>(30)
+        val arr = arrayOfNulls<Pokemon>(SLOTS_PER_BOX)
         pokemon.filter { it.box == currentBox }.forEach { p ->
-            arr[p.slot.coerceIn(0, 29)] = p
+            if (p.slot in 0 until SLOTS_PER_BOX) arr[p.slot] = p
         }
         arr
     }
 
-    Column(Modifier.fillMaxSize()) {
-        // Box navigation bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onPrev, enabled = currentBox > 0) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Previous box")
-            }
-            Text(
-                "Box ${currentBox + 1}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            IconButton(onClick = onNext, enabled = currentBox < boxCount - 1) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next box")
-            }
-        }
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(6),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(30) { slotIdx ->
-                BoxSlot(
-                    pokemon = slots[slotIdx],
-                    isSelected = slots[slotIdx] != null && slots[slotIdx] == selectedPokemon,
-                    isDraggable = isDraggable && !isDragging,
-                    onGloballyPositioned = slotBoundsMap?.let { map ->
-                        { bounds -> map[slotIdx] = bounds }
-                    },
-                    onClick = { slots[slotIdx]?.let(onSelectPokemon) },
-                    onDragStart = { pkm, pos -> onDragStart(pkm, pos) },
-                    onDragMove = onDragMove,
-                    onDragEnd = onDragEnd,
-                    onDragCancel = onDragCancel,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BoxSlot(
-    pokemon: Pokemon?,
-    isSelected: Boolean,
-    isDraggable: Boolean,
-    onGloballyPositioned: ((Rect) -> Unit)?,
-    onClick: () -> Unit,
-    onDragStart: (Pokemon, Offset) -> Unit,
-    onDragMove: (Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
-) {
-    val haptic = LocalHapticFeedback.current
-    var boundsInRoot by remember { mutableStateOf(Rect.Zero) }
-
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(6.dp))
-            .background(
-                if (pokemon != null) MaterialTheme.colorScheme.surface
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .then(
-                if (isSelected) Modifier.border(2.dp, HomeYellow, RoundedCornerShape(6.dp))
-                else Modifier
-            )
-            .onGloballyPositioned { coords ->
-                boundsInRoot = coords.boundsInRoot()
-                onGloballyPositioned?.invoke(boundsInRoot)
-            }
-            .then(
-                if (isDraggable && pokemon != null) {
-                    Modifier.pointerInput(pokemon) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { offset ->
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                val globalStart = Offset(
-                                    boundsInRoot.left + offset.x,
-                                    boundsInRoot.top + offset.y,
-                                )
-                                onDragStart(pokemon, globalStart)
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDragMove(dragAmount)
-                            },
-                            onDragEnd = { onDragEnd() },
-                            onDragCancel = { onDragCancel() },
-                        )
-                    }
-                } else Modifier
-            )
-            .clickable(enabled = pokemon != null && !isDraggable.not(), onClick = onClick),
-        contentAlignment = Alignment.Center,
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (pokemon != null) {
-            AsyncImage(
-                model = pokemon.spriteUrl,
-                contentDescription = pokemon.species,
-                modifier = Modifier.fillMaxSize(0.9f),
-            )
-            if (pokemon.isShiny) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = "Shiny",
-                    tint = HomeYellow,
-                    modifier = Modifier.align(Alignment.TopEnd).size(10.dp),
-                )
-            }
-        } else {
-            Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape))
-        }
-    }
-}
-
-// ── Pokémon detail sheet ───────────────────────────────────────────────────────
-
-@Composable
-private fun PokemonDetailSheet(
-    pokemon: Pokemon,
-    isBankPokemon: Boolean,
-    onStoreToBankClick: () -> Unit,
-    onRemoveFromBankClick: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .padding(bottom = 24.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        items(SLOTS_PER_BOX) { idx ->
+            val pkm = slots[idx]
             Box(
-                Modifier.size(96.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                modifier = Modifier
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (pkm != null) SlotFilled else SlotEmpty)
+                    .then(
+                        if (pkm != null && pkm == selectedPokemon)
+                            Modifier.border(2.dp, SelectBorder, RoundedCornerShape(8.dp))
+                        else Modifier
+                    )
+                    .clickable(enabled = pkm != null) { pkm?.let(onSelectPokemon) },
                 contentAlignment = Alignment.Center,
             ) {
-                AsyncImage(model = pokemon.spriteUrl, contentDescription = pokemon.species, modifier = Modifier.size(88.dp))
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(pokemon.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    if (pokemon.isShiny) {
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Default.Star, "Shiny", tint = HomeYellow, modifier = Modifier.size(16.dp))
+                if (pkm != null) {
+                    AsyncImage(
+                        model = pkm.spriteUrl,
+                        contentDescription = pkm.species,
+                        modifier = Modifier.fillMaxSize(0.88f),
+                    )
+                    if (pkm.isShiny) {
+                        Icon(
+                            Icons.Default.Star,
+                            "Shiny",
+                            tint = HomeYellow,
+                            modifier = Modifier.size(10.dp).align(Alignment.TopEnd),
+                        )
                     }
                 }
-                if (pokemon.nickname != null) {
-                    Text(pokemon.species, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+// ── Box thumbnail grid ─────────────────────────────────────────────────────────
+
+@Composable
+private fun BoxThumbnailGrid(
+    allPokemon: List<Pokemon>,
+    currentBox: Int,
+    boxCount: Int,
+    onSelectBox: (Int) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(boxCount) { boxIdx ->
+            val occupied = remember(allPokemon, boxIdx) {
+                allPokemon.filter { it.box == boxIdx }.map { it.slot }.toSet()
+            }
+            Box(
+                Modifier
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (boxIdx == currentBox) HeaderPill else SlotEmpty)
+                    .clickable { onSelectBox(boxIdx) }
+                    .padding(6.dp),
+            ) {
+                // 5 cols × 4 rows = 20 dot mini-grid
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    repeat(4) { row ->
+                        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            repeat(5) { col ->
+                                val slot = row * 5 + col
+                                Box(
+                                    Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(1.dp))
+                                        .background(
+                                            if (slot in occupied) Color(0xFF1A4FA0)
+                                            else Color.White.copy(alpha = 0.6f)
+                                        ),
+                                )
+                            }
+                        }
+                    }
                 }
-                Text(
-                    buildString {
-                        append("Lv.${pokemon.level}")
-                        pokemon.genderSymbol?.let { append("  $it") }
-                        pokemon.nature?.let { append("  $it") }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "Gen ${pokemon.generation}" + (pokemon.ball?.let { "  •  $it Ball" } ?: ""),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
-        Spacer(Modifier.height(20.dp))
-        if (!isBankPokemon) {
-            Button(
-                onClick = { onStoreToBankClick(); onDismiss() },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Store in Vault")
+    }
+}
+
+// ── Summary panel ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun SummaryContent(pokemon: Pokemon, onClose: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        // Header (tap to close)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(HeaderPill)
+                .clickable { onClose() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Summary  ×", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+        }
+        Spacer(Modifier.height(6.dp))
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp))
+                .background(SummaryBg)
+                .padding(10.dp),
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                // Sprite + info rows
+                Row(verticalAlignment = Alignment.Top) {
+                    Box(
+                        Modifier
+                            .size(88.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AsyncImage(
+                            model = pokemon.spriteUrl,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        InfoRow("Nickname", pokemon.displayName, italic = pokemon.nickname != null)
+                        InfoRow("Species", pokemon.species)
+                        InfoRow("Level", pokemon.level.toString())
+                        pokemon.nature?.let { InfoRow("Nature", it) }
+                        if (pokemon.type1.isNotBlank()) InfoRow("Type", pokemon.typeString)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                // Stats + Moves
+                Row(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f)) {
+                        SectionHeader("Stats")
+                        if (pokemon.hasStats) {
+                            StatsRadarChart(
+                                hp = pokemon.statHp, atk = pokemon.statAtk, def = pokemon.statDef,
+                                spa = pokemon.statSpa, spd = pokemon.statSpd, spe = pokemon.statSpe,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("—", color = Color.Gray)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        SectionHeader("Moves")
+                        Spacer(Modifier.height(4.dp))
+                        pokemon.moves.forEach { move ->
+                            MoveButton(move)
+                            Spacer(Modifier.height(4.dp))
+                        }
+                        if (pokemon.moves.isEmpty()) {
+                            Text("No move data", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
             }
-            Spacer(Modifier.height(4.dp))
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String, italic: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(RedLabel)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            Text(label, color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.width(4.dp))
+        Box(
+            Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.White)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
             Text(
-                "Or long-press and drag to the Vault tab",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+                value,
+                style = if (italic) MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic)
+                        else MaterialTheme.typography.bodySmall,
+                color = Color.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-        } else {
-            OutlinedButton(
-                onClick = { onRemoveFromBankClick(); onDismiss() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Remove from Vault")
-            }
         }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(RedLabel)
+            .padding(vertical = 3.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun MoveButton(move: PokemonMove) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(typeColor(move.type))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            move.name,
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+// ── Radar chart ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatsRadarChart(
+    hp: Int, atk: Int, def: Int, spa: Int, spd: Int, spe: Int,
+    modifier: Modifier,
+) {
+    // Order around the hexagon (starting top, clockwise): HP, Atk, Def, Spe, SpD, SpA
+    val values = listOf(hp, atk, def, spe, spd, spa).map { it.toFloat() }
+    val labels = listOf("HP", "Atk", "Def", "Spe", "SpD", "SpA")
+    val nums   = listOf(hp, atk, def, spe, spd, spa)
+    val maxVal = 400f
+
+    Canvas(modifier) {
+        val cx = size.width / 2
+        val cy = size.height / 2
+        val r  = minOf(size.width, size.height) / 2 * 0.58f
+
+        val angles = (0 until 6).map { i -> (-Math.PI / 2 + Math.PI * 2 / 6 * i).toFloat() }
+
+        // Background rings
+        for (frac in listOf(0.25f, 0.5f, 0.75f, 1f)) {
+            val path = Path()
+            angles.forEachIndexed { i, a ->
+                val x = cx + r * frac * cos(a); val y = cy + r * frac * sin(a)
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            drawPath(path, Color(0x22FFFFFF))
+            drawPath(path, Color(0x55888888), style = Stroke(0.5.dp.toPx()))
+        }
+        // Spokes
+        angles.forEach { a ->
+            drawLine(Color(0x44888888), center, androidx.compose.ui.geometry.Offset(cx + r * cos(a), cy + r * sin(a)), 0.5.dp.toPx())
+        }
+        // Stat polygon
+        val poly = Path()
+        values.forEachIndexed { i, v ->
+            val ratio = (v / maxVal).coerceIn(0f, 1f)
+            val x = cx + r * ratio * cos(angles[i]); val y = cy + r * ratio * sin(angles[i])
+            if (i == 0) poly.moveTo(x, y) else poly.lineTo(x, y)
+        }
+        poly.close()
+        drawPath(poly, Color(0x88FFB7C5))
+        drawPath(poly, Color(0xFFFF6B9D), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+    }
+}
+
+// ── Settings sidebar ───────────────────────────────────────────────────────────
+
+@Composable
+private fun SettingsSidebar(
+    onClose: () -> Unit,
+    onManageSaves: () -> Unit,
+    onRefreshSaves: () -> Unit,
+    onServerSettings: () -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxHeight()
+            .width(280.dp)
+            .background(SidebarRed)
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {},
+    ) {
+        Column(Modifier.fillMaxSize().padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Settings",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, null, tint = Color.White)
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            SidebarButton("Manage saves", onManageSaves)
+            Spacer(Modifier.height(12.dp))
+            SidebarButton("Server Settings", onServerSettings)
+            Spacer(Modifier.height(12.dp))
+            SidebarButton("Refresh saves", onRefreshSaves)
+        }
+    }
+}
+
+@Composable
+private fun SidebarButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3EBDAD)),
+    ) {
+        Text(text, color = Color.White, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -778,11 +822,7 @@ private fun AddSaveSheetContent(
     onPickManually: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Column(
-        Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Add Save File", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
         when {
@@ -798,23 +838,32 @@ private fun AddSaveSheetContent(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            else -> detected.groupBy { it.emulator }.forEach { (emulator, files) ->
-                Text(emulator, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 4.dp))
-                files.forEach { file ->
-                    ListItem(
-                        headlineContent = { Text(file.gameName ?: file.file.nameWithoutExtension) },
-                        supportingContent = {
-                            val sub = file.gameName?.let { file.file.nameWithoutExtension } ?: file.file.parentFile?.name
-                            if (sub != null) Text(sub, style = MaterialTheme.typography.labelSmall)
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { onSelect(file); onDismiss() }) {
-                                Icon(Icons.Default.Add, "Add")
-                            }
-                        },
-                    )
+            else -> LazyColumn {
+                detected.groupBy { it.emulator }.forEach { (emulator, files) ->
+                    item {
+                        Text(
+                            emulator,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        )
+                    }
+                    items(files) { file ->
+                        ListItem(
+                            headlineContent = { Text(file.gameName ?: file.file.nameWithoutExtension) },
+                            supportingContent = {
+                                val sub = file.gameName?.let { file.file.nameWithoutExtension } ?: file.file.parentFile?.name
+                                if (sub != null) Text(sub, style = MaterialTheme.typography.labelSmall)
+                            },
+                            trailingContent = {
+                                IconButton(onClick = { onSelect(file); onDismiss() }) {
+                                    Icon(Icons.Default.Add, "Add")
+                                }
+                            },
+                        )
+                    }
+                    item { HorizontalDivider() }
                 }
-                HorizontalDivider()
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -830,19 +879,13 @@ private fun AddSaveSheetContent(
 @Composable
 private fun LoadingPanel() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        CircularProgressIndicator(color = Color.White)
     }
 }
 
 @Composable
-private fun EmptyPanel(message: String, actionLabel: String?, onAction: (() -> Unit)?) {
+private fun EmptyPanel(message: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-            Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (actionLabel != null && onAction != null) {
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = onAction) { Text(actionLabel) }
-            }
-        }
+        Text(message, color = Color.White, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
     }
 }

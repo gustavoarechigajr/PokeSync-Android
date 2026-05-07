@@ -36,10 +36,10 @@ data class HomeUiState(
     val bankPokemon: List<Pokemon> = emptyList(),
     val bankBox: Int = 0,
     val isBankLoading: Boolean = false,
-    // Shared UI
-    val selectedTab: HomeTab = HomeTab.Save,
+    // Selection
     val selectedPokemon: Pokemon? = null,
     val selectedPokemonSource: HomeTab? = null,
+    // Sheets
     val showAddSheet: Boolean = false,
     val isScanning: Boolean = false,
     val detectedFiles: List<DetectedSaveFile> = emptyList(),
@@ -75,10 +75,6 @@ class HomeViewModel @Inject constructor(
         }
         loadBank()
     }
-
-    // ── Tab navigation ────────────────────────────────────────────────────────
-
-    fun selectTab(tab: HomeTab) = _ui.update { it.copy(selectedTab = tab, selectedPokemon = null) }
 
     // ── Save panel ────────────────────────────────────────────────────────────
 
@@ -157,7 +153,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { repository.importToVault(saveId, replace) }
                 .onSuccess { pkm ->
-                    _ui.update { it.copy(isBankLoading = false, bankPokemon = pkm, selectedTab = HomeTab.Bank) }
+                    _ui.update { it.copy(isBankLoading = false, bankPokemon = pkm) }
                 }
                 .onFailure { e ->
                     _ui.update { it.copy(isBankLoading = false, globalError = e.message) }
