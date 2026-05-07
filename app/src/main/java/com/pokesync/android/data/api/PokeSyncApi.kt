@@ -66,4 +66,20 @@ interface PokeSyncApi {
         @Query("box") box: Int,
         @Query("slot") slot: Int,
     ): ResponseBody
+
+    /// Pre-flight check: returns blocking errors and informational warnings
+    /// without modifying any state. Call before exportVaultPokemonToSave.
+    @POST("api/android/vault/{vaultId}/validate-export")
+    suspend fun validateExport(
+        @Path("vaultId") vaultId: String,
+        @Query("saveId") saveId: String,
+    ): TransferValidationResponse
 }
+
+/// Mirrors C# TransferValidationDTO. canTransfer == errors.isEmpty().
+data class TransferValidationResponse(
+    val canTransfer: Boolean,
+    val errors: List<String>,
+    val warnings: List<String>,
+    val outputFormat: String?,
+)

@@ -391,9 +391,61 @@ fun HomeScreen(
         )
     }
 
+    ui.pendingTransfer?.let { pending ->
+        TransferValidationDialog(
+            pending = pending,
+            onConfirm = viewModel::confirmPendingTransfer,
+            onCancel = viewModel::cancelPendingTransfer,
+        )
+    }
+
     if (showPermissionDialog) {
         RequestAllFilesAccessDialog(onDismiss = { showPermissionDialog = false })
     }
+}
+
+@Composable
+private fun TransferValidationDialog(
+    pending: PendingTransfer,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val isError = pending.errors.isNotEmpty()
+    val title = if (isError) "Transfer not possible" else "Transfer warnings"
+    val items = if (isError) pending.errors else pending.warnings
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(title) },
+        text = {
+            Column {
+                items.forEach { line ->
+                    Text(
+                        line,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isError) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (isError) {
+                Button(onClick = onCancel) { Text("OK") }
+            } else {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(containerColor = RedLabel),
+                ) {
+                    Text("Transfer anyway", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        dismissButton = if (isError) null else { ->
+            OutlinedButton(onClick = onCancel) { Text("Cancel") }
+        },
+    )
 }
 
 // ── Panel container ────────────────────────────────────────────────────────────

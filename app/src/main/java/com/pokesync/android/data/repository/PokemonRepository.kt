@@ -67,6 +67,13 @@ class PokemonRepository @Inject constructor(
         targetSlot: Int,
     ): ByteArray = api.exportVaultPokemonToSave(vaultPokemonId, saveId, targetBox, targetSlot).bytes()
 
+    /**
+     * Pre-flight compatibility check before exportToSave. Errors block; warnings
+     * are informational and the user can override.
+     */
+    suspend fun validateExport(vaultPokemonId: String, saveId: String) =
+        api.validateExport(vaultPokemonId, saveId)
+
     private suspend fun upload(bytes: ByteArray, filename: String): UploadResult {
         val requestBody = bytes.toRequestBody("application/octet-stream".toMediaType())
         val part = MultipartBody.Part.createFormData("file", filename, requestBody)

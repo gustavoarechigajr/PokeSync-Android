@@ -25,6 +25,17 @@ import javax.inject.Inject
 
 enum class HomeTab { Save, Bank }
 
+/// Snapshot of an export the user has been asked to confirm or has been blocked from.
+/// errors non-empty → blocking dialog (only OK to dismiss).
+/// warnings non-empty (errors empty) → confirmation dialog (Transfer anyway / Cancel).
+data class PendingTransfer(
+    val vaultPokemonId: String,
+    val targetBox: Int,
+    val targetSlot: Int,
+    val errors: List<String>,
+    val warnings: List<String>,
+)
+
 data class HomeUiState(
     // Save (left panel)
     val activeSave: RegisteredSave? = null,
@@ -46,6 +57,8 @@ data class HomeUiState(
     val globalError: String? = null,
     // Confirmations
     val pokemonToDelete: Pokemon? = null,
+    // Set when validation surfaced errors or warnings; UI shows the matching dialog.
+    val pendingTransfer: PendingTransfer? = null,
 )
 
 val HomeUiState.bankBoxCount: Int
@@ -287,6 +300,8 @@ class HomeViewModel @Inject constructor(
     }
 
     /// Exports a vault Pokémon into the active save at the current box's first empty slot.
+    /// Calls the validation endpoint first; opens a dialog if the server flagged errors
+    /// or warnings, otherwise proceeds straight to the inject.
     fun exportToSave(vaultPokemonId: String) {
         val activeSave = _ui.value.activeSave ?: return
         val saveId = activeSave.lastSaveId ?: return
@@ -302,23 +317,59 @@ class HomeViewModel @Inject constructor(
             return
         }
 
-        _ui.update { it.copy(isSaveLoading = true) }
         viewModelScope.launch {
-            runCatching { repository.exportToSave(vaultPokemonId, saveId, targetBox, targetSlot) }
-                .onSuccess { modifiedBytes ->
-                    // Write the modified save back to the device
-                    val file = java.io.File(activeSave.absolutePath)
-                    runCatching { file.parentFile?.mkdirs(); file.writeBytes(modifiedBytes) }
-                        .onFailure { e ->
-                            _ui.update { it.copy(globalError = "Exported by server, but failed to write back: ${e.message}") }
+            runCatching { repository.validateExport(vaultPokemonId, saveId) }
+                .onSuccess { v ->
+                    when {
+                        v.errors.isNotEmpty() -> _ui.update {
+                            it.copy(pendingTransfer = PendingTransfer(
+                                vaultPokemonId, targetBox, targetSlot,
+                                errors = v.errors, warnings = emptyList(),
+                            ))
                         }
-                    // Refresh to show the changes
-                    syncActiveSave()
+                        v.warnings.isNotEmpty() -> _ui.update {
+                            it.copy(pendingTransfer = PendingTransfer(
+                                vaultPokemonId, targetBox, targetSlot,
+                                errors = emptyList(), warnings = v.warnings,
+                            ))
+                        }
+                        else -> doExport(activeSave, saveId, vaultPokemonId, targetBox, targetSlot)
+                    }
                 }
-                .onFailure { e ->
-                    _ui.update { it.copy(isSaveLoading = false, globalError = e.message) }
-                }
+                .onFailure { e -> _ui.update { it.copy(globalError = "Validate failed: ${e.message}") } }
         }
+    }
+
+    fun confirmPendingTransfer() {
+        val pending = _ui.value.pendingTransfer ?: return
+        val activeSave = _ui.value.activeSave ?: return
+        val saveId = activeSave.lastSaveId ?: return
+        _ui.update { it.copy(pendingTransfer = null) }
+        viewModelScope.launch {
+            doExport(activeSave, saveId, pending.vaultPokemonId, pending.targetBox, pending.targetSlot)
+        }
+    }
+
+    fun cancelPendingTransfer() = _ui.update { it.copy(pendingTransfer = null) }
+
+    private suspend fun doExport(
+        activeSave: RegisteredSave,
+        saveId: String,
+        vaultPokemonId: String,
+        targetBox: Int,
+        targetSlot: Int,
+    ) {
+        _ui.update { it.copy(isSaveLoading = true) }
+        runCatching { repository.exportToSave(vaultPokemonId, saveId, targetBox, targetSlot) }
+            .onSuccess { modifiedBytes ->
+                val file = java.io.File(activeSave.absolutePath)
+                runCatching { file.parentFile?.mkdirs(); file.writeBytes(modifiedBytes) }
+                    .onFailure { e ->
+                        _ui.update { it.copy(globalError = "Exported by server, but failed to write back: ${e.message}") }
+                    }
+                syncActiveSave()
+            }
+            .onFailure { e -> _ui.update { it.copy(isSaveLoading = false, globalError = e.message) } }
     }
 
     fun clearError() = _ui.update { it.copy(globalError = null) }
