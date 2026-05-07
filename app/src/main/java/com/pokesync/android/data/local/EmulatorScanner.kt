@@ -123,10 +123,11 @@ class EmulatorScanner @Inject constructor() {
     private fun tryResolvePokemon(file: File, config: EmulatorConfig): DetectedSaveFile? {
         return when (config.name) {
             "Eden" -> {
-                // Eden path: .../nand/user/save/{userId16}/{titleId16}/{saveType}/file.bin
-                // titleId is a single 16-char hex segment in the path
-                val match = PokemonTitleDatabase.resolveFromPath(file) ?: return null
-                DetectedSaveFile(file, config.name, match.gameName)
+                // Eden path: .../nand/user/save/{userId}/{accountId32}/{titleId16}/{saveType}/file.bin
+                // Try to identify the game from the 16-char title ID segment, but don't drop
+                // the file if it's unknown — let the backend (PKHeX) be the real validator.
+                val match = PokemonTitleDatabase.resolveFromPath(file)
+                DetectedSaveFile(file, config.name, match?.gameName)
             }
             "Azahar" -> {
                 // Azahar path: .../title/00040000/0011c400/data/00000001/main
