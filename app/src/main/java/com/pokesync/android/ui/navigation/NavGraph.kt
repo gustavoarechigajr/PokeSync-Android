@@ -49,7 +49,13 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
             })
         }
         composable(Screen.Home.route) {
-            HomeScreen()
+            HomeScreen(
+                onNavigateToConnect = {
+                    navController.navigate(Screen.Connect.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

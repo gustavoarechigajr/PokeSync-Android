@@ -11,6 +11,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,18 +71,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.pokesync.android.data.local.DetectedSaveFile
@@ -133,11 +145,22 @@ private val SidebarRed   = Brush.verticalGradient(listOf(Color(0xFFCC1111), Colo
 
 private const val SLOTS_PER_BOX = 30
 
+// ── Drag state ─────────────────────────────────────────────────────────────────
+
+private data class DragState(
+    val pokemon: Pokemon,
+    val source: HomeTab,
+    val position: Offset,  // window-space coordinates of ghost centre
+)
+
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    onNavigateToConnect: () -> Unit = {},
+) {
     val saves by viewModel.saves.collectAsState()
     val ui by viewModel.ui.collectAsState()
     val snackbar = remember { SnackbarHostState() }
@@ -145,6 +168,40 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     var showSaveDropdown by remember { mutableStateOf(false) }
     var isBoxView by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(!hasAllFilesAccess()) }
+
+    // Drag and drop state
+    var dragState by remember { mutableStateOf<DragState?>(null) }
+    var rightPanelBounds by remember { mutableStateOf<Rect?>(null) }
+    var rightGridBounds by remember { mutableStateOf<Rect?>(null) }
+
+    fun handleDrop(ds: DragState) {
+        val rpb = rightPanelBounds ?: return
+        if (!rpb.contains(ds.position)) return
+        when (ds.source) {
+            HomeTab.Save -> viewModel.addPokemonToVault(ds.pokemon)
+            HomeTab.Bank -> {
+                val gb = rightGridBounds ?: return
+                if (!gb.contains(ds.position)) return
+                val cols = 4
+                val rows = (SLOTS_PER_BOX + cols - 1) / cols
+                val col = ((ds.position.x - gb.left) / (gb.width / cols)).toInt().coerceIn(0, cols - 1)
+                val row = ((ds.position.y - gb.top) / (gb.height / rows)).toInt().coerceIn(0, rows - 1)
+                val slot = (row * cols + col).coerceIn(0, SLOTS_PER_BOX - 1)
+                viewModel.onVaultSlotDrop(ds.pokemon, ui.bankBox, slot)
+            }
+        }
+    }
+
+    val onDragStart: (Pokemon, HomeTab, Offset) -> Unit = { pkm, src, pos ->
+        dragState = DragState(pkm, src, pos)
+    }
+    val onDragUpdate: (Offset) -> Unit = { delta ->
+        dragState = dragState?.copy(position = dragState!!.position + delta)
+    }
+    val onDragEnd: () -> Unit = {
+        dragState?.let { handleDrop(it) }
+        dragState = null
+    }
 
     // Force landscape
     val activity = LocalContext.current as? Activity
@@ -188,17 +245,25 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         onSelectSave = { viewModel.selectSave(it); showSaveDropdown = false },
                         onPrev = viewModel::prevSaveBox,
                         onNext = viewModel::nextSaveBox,
-                        onSelectBox = { /* navigate box in box-view */ },
+                        onSelectBox = { },
                         onSelectPokemon = { pkm ->
                             if (pkm.id == ui.selectedPokemon?.id) viewModel.selectPokemon(null, null)
                             else viewModel.selectPokemon(pkm, HomeTab.Save)
                         },
                         selectedPokemon = ui.selectedPokemon,
+                        activeDrag = dragState,
+                        onDragStart = { pkm, pos -> onDragStart(pkm, HomeTab.Save, pos) },
+                        onDragUpdate = onDragUpdate,
+                        onDragEnd = onDragEnd,
                     )
                 }
             }
-            // RIGHT panel
-            HomePanel(Modifier.weight(1f)) {
+            // RIGHT panel — track bounds for drop detection
+            HomePanel(
+                Modifier
+                    .weight(1f)
+                    .onGloballyPositioned { rightPanelBounds = it.boundsInWindow() }
+            ) {
                 if (selectedFromSave) {
                     SummaryContent(
                         pokemon = ui.selectedPokemon!!,
@@ -212,15 +277,46 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         onToggleBoxView = { isBoxView = !isBoxView },
                         onPrev = viewModel::prevBankBox,
                         onNext = viewModel::nextBankBox,
-                        onSelectBox = { /* navigate box in box-view */ },
+                        onSelectBox = { },
                         onSelectPokemon = { pkm ->
                             if (pkm.id == ui.selectedPokemon?.id) viewModel.selectPokemon(null, null)
                             else viewModel.selectPokemon(pkm, HomeTab.Bank)
                         },
                         onImportSave = { viewModel.importSaveToBank(replace = false) },
                         selectedPokemon = ui.selectedPokemon,
+                        activeDrag = dragState,
+                        onDragStart = { pkm, pos -> onDragStart(pkm, HomeTab.Bank, pos) },
+                        onDragUpdate = onDragUpdate,
+                        onDragEnd = onDragEnd,
+                        onGridPositioned = { rightGridBounds = it },
                     )
                 }
+            }
+        }
+
+        // ── Drag ghost ─────────────────────────────────────────────────────────
+        dragState?.let { ds ->
+            val ghostDp = 72.dp
+            val ghostPx = with(LocalDensity.current) { ghostDp.toPx() }
+            Box(
+                Modifier
+                    .offset {
+                        IntOffset(
+                            (ds.position.x - ghostPx / 2).roundToInt(),
+                            (ds.position.y - ghostPx / 2).roundToInt(),
+                        )
+                    }
+                    .size(ghostDp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SlotFilled)
+                    .border(2.dp, SelectBorder, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                AsyncImage(
+                    model = ds.pokemon.spriteUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(0.88f),
+                )
             }
         }
 
@@ -234,7 +330,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 onClose = { showSettings = false },
                 onManageSaves = { showSettings = false; viewModel.openAddSheet() },
                 onRefreshSaves = { viewModel.syncActiveSave(); showSettings = false },
-                onServerSettings = { showSettings = false },
+                onServerSettings = { showSettings = false; onNavigateToConnect() },
             )
         }
 
@@ -291,6 +387,10 @@ private fun SaveContent(
     onNext: () -> Unit,
     onSelectBox: (Int) -> Unit,
     onSelectPokemon: (Pokemon) -> Unit,
+    activeDrag: DragState? = null,
+    onDragStart: ((Pokemon, Offset) -> Unit)? = null,
+    onDragUpdate: ((Offset) -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxSize()) {
         // Top bar
@@ -369,6 +469,10 @@ private fun SaveContent(
                 currentBox = ui.saveBox,
                 selectedPokemon = selectedPokemon,
                 onSelectPokemon = onSelectPokemon,
+                activeDrag = activeDrag,
+                onDragStart = onDragStart,
+                onDragUpdate = onDragUpdate,
+                onDragEnd = onDragEnd,
             )
         }
     }
@@ -387,6 +491,11 @@ private fun BankContent(
     onSelectBox: (Int) -> Unit,
     onSelectPokemon: (Pokemon) -> Unit,
     onImportSave: () -> Unit,
+    activeDrag: DragState? = null,
+    onDragStart: ((Pokemon, Offset) -> Unit)? = null,
+    onDragUpdate: ((Offset) -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
+    onGridPositioned: ((Rect) -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxSize()) {
         // Top bar
@@ -453,6 +562,11 @@ private fun BankContent(
                 currentBox = ui.bankBox,
                 selectedPokemon = selectedPokemon,
                 onSelectPokemon = onSelectPokemon,
+                activeDrag = activeDrag,
+                onDragStart = onDragStart,
+                onDragUpdate = onDragUpdate,
+                onDragEnd = onDragEnd,
+                onGridPositioned = onGridPositioned,
             )
         }
     }
@@ -466,6 +580,11 @@ private fun BoxGrid(
     currentBox: Int,
     selectedPokemon: Pokemon?,
     onSelectPokemon: (Pokemon) -> Unit,
+    activeDrag: DragState? = null,
+    onDragStart: ((Pokemon, Offset) -> Unit)? = null,
+    onDragUpdate: ((Offset) -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
+    onGridPositioned: ((Rect) -> Unit)? = null,
 ) {
     val slots = remember(pokemon, currentBox) {
         val arr = arrayOfNulls<Pokemon>(SLOTS_PER_BOX)
@@ -477,13 +596,24 @@ private fun BoxGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (onGridPositioned != null)
+                    Modifier.onGloballyPositioned { onGridPositioned(it.boundsInWindow()) }
+                else Modifier
+            ),
         contentPadding = PaddingValues(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
+        userScrollEnabled = activeDrag == null,
     ) {
         items(SLOTS_PER_BOX) { idx ->
             val pkm = slots[idx]
+            val isBeingDragged = activeDrag?.pokemon?.id == pkm?.id
+            var slotWindowPos by remember { mutableStateOf(Offset.Zero) }
+            var slotSize by remember { mutableStateOf(IntSize.Zero) }
+
             Box(
                 modifier = Modifier
                     .aspectRatio(1f)
@@ -494,7 +624,35 @@ private fun BoxGrid(
                             Modifier.border(2.dp, SelectBorder, RoundedCornerShape(8.dp))
                         else Modifier
                     )
-                    .clickable(enabled = pkm != null) { pkm?.let(onSelectPokemon) },
+                    .alpha(if (isBeingDragged) 0.3f else 1f)
+                    .onGloballyPositioned { coords ->
+                        slotWindowPos = coords.positionInWindow()
+                        slotSize = coords.size
+                    }
+                    .then(
+                        if (pkm != null && onDragStart != null) {
+                            Modifier.pointerInput(pkm.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { _ ->
+                                        val centre = slotWindowPos + Offset(
+                                            slotSize.width / 2f,
+                                            slotSize.height / 2f,
+                                        )
+                                        onDragStart(pkm, centre)
+                                    },
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        onDragUpdate?.invoke(Offset(amount.x, amount.y))
+                                    },
+                                    onDragEnd = { onDragEnd?.invoke() },
+                                    onDragCancel = { onDragEnd?.invoke() },
+                                )
+                            }
+                        } else Modifier
+                    )
+                    .clickable(enabled = pkm != null && activeDrag == null) {
+                        pkm?.let(onSelectPokemon)
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 if (pkm != null) {
