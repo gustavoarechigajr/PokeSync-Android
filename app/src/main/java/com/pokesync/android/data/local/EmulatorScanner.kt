@@ -44,8 +44,13 @@ class EmulatorScanner @Inject constructor() {
                 name = "Eden",
                 saveDirs = listOf(
                     "$root/Android/data/dev.eden.eden_emulator/files/nand/user/save",
+                    // Eden "Export Save Data" destination
+                    "$root/Eden Data/Saves",
+                    "$root/Eden Data/saves",
                 ),
                 extensions = listOf("bin", "sav"),
+                // Switch saves stored by Eden are extensionless files named "main" or "main2"
+                exactNames = listOf("main", "main2"),
                 note = "Requires All Files Access permission",
             ),
             EmulatorConfig(
