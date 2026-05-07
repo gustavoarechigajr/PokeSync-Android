@@ -44,6 +44,8 @@ data class HomeUiState(
     val isScanning: Boolean = false,
     val detectedFiles: List<DetectedSaveFile> = emptyList(),
     val globalError: String? = null,
+    // Confirmations
+    val pokemonToDelete: Pokemon? = null,
 )
 
 val HomeUiState.bankBoxCount: Int
@@ -183,6 +185,18 @@ class HomeViewModel @Inject constructor(
                 }
                 .onFailure { e -> _ui.update { it.copy(globalError = e.message) } }
         }
+    }
+
+    fun requestDeletePokemon(pokemon: Pokemon) =
+        _ui.update { it.copy(pokemonToDelete = pokemon) }
+
+    fun cancelDelete() =
+        _ui.update { it.copy(pokemonToDelete = null) }
+
+    fun confirmDelete() {
+        val pokemon = _ui.value.pokemonToDelete ?: return
+        _ui.update { it.copy(pokemonToDelete = null) }
+        removeFromBank(pokemon.id)
     }
 
     fun prevBankBox() = _ui.update { s -> s.copy(bankBox = (s.bankBox - 1).coerceAtLeast(0), selectedPokemon = null) }
