@@ -175,6 +175,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     SummaryContent(
                         pokemon = ui.selectedPokemon!!,
                         onClose = { viewModel.selectPokemon(null, null) },
+                        onAddToVault = null,
                     )
                 } else {
                     SaveContent(
@@ -188,7 +189,10 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         onPrev = viewModel::prevSaveBox,
                         onNext = viewModel::nextSaveBox,
                         onSelectBox = { /* navigate box in box-view */ },
-                        onSelectPokemon = { viewModel.selectPokemon(it, HomeTab.Save) },
+                        onSelectPokemon = { pkm ->
+                            if (pkm.id == ui.selectedPokemon?.id) viewModel.selectPokemon(null, null)
+                            else viewModel.selectPokemon(pkm, HomeTab.Save)
+                        },
                         selectedPokemon = ui.selectedPokemon,
                     )
                 }
@@ -199,6 +203,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     SummaryContent(
                         pokemon = ui.selectedPokemon!!,
                         onClose = { viewModel.selectPokemon(null, null) },
+                        onAddToVault = { viewModel.addPokemonToVault(ui.selectedPokemon!!) },
                     )
                 } else {
                     BankContent(
@@ -208,7 +213,10 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                         onPrev = viewModel::prevBankBox,
                         onNext = viewModel::nextBankBox,
                         onSelectBox = { /* navigate box in box-view */ },
-                        onSelectPokemon = { viewModel.selectPokemon(it, HomeTab.Bank) },
+                        onSelectPokemon = { pkm ->
+                            if (pkm.id == ui.selectedPokemon?.id) viewModel.selectPokemon(null, null)
+                            else viewModel.selectPokemon(pkm, HomeTab.Bank)
+                        },
                         onImportSave = { viewModel.importSaveToBank(replace = false) },
                         selectedPokemon = ui.selectedPokemon,
                     )
@@ -565,19 +573,35 @@ private fun BoxThumbnailGrid(
 // ── Summary panel ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun SummaryContent(pokemon: Pokemon, onClose: () -> Unit) {
+private fun SummaryContent(pokemon: Pokemon, onClose: () -> Unit, onAddToVault: (() -> Unit)?) {
     Column(Modifier.fillMaxSize()) {
-        // Header (tap to close)
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(HeaderPill)
-                .clickable { onClose() }
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center,
+        // Header row
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text("Summary  ×", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(HeaderPill)
+                    .clickable { onClose() }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Summary  ×", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            }
+            if (onAddToVault != null) {
+                Button(
+                    onClick = onAddToVault,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RedLabel),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                ) {
+                    Text("+ Vault", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                }
+            }
         }
         Spacer(Modifier.height(6.dp))
         Box(

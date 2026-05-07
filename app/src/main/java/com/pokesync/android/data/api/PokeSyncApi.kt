@@ -38,6 +38,13 @@ interface PokeSyncApi {
         @Query("replace") replace: Boolean = false,
     ): List<AndroidPokemonDto>
 
+    @POST("api/android/vault/add/{saveId}")
+    suspend fun addSingleToVault(
+        @Path("saveId") saveId: String,
+        @Query("box") box: Int,
+        @Query("slot") slot: Int,
+    ): List<AndroidPokemonDto>
+
     @DELETE("api/android/vault/{id}")
     suspend fun removeFromVault(@Path("id") id: String)
 

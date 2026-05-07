@@ -161,10 +161,18 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun storePokemonInBank(pokemon: Pokemon) {
-        // Move a single Pokémon from the save view to the bank by importing just that slot
-        // For now, we import the whole save if not already done — refined later with single-pkm endpoint
-        importSaveToBank(replace = false)
+    fun addPokemonToVault(pokemon: Pokemon) {
+        val saveId = _ui.value.activeSave?.lastSaveId ?: return
+        _ui.update { it.copy(isBankLoading = true) }
+        viewModelScope.launch {
+            runCatching { repository.addSingleToVault(saveId, pokemon.box, pokemon.slot) }
+                .onSuccess { pkm ->
+                    _ui.update { it.copy(isBankLoading = false, bankPokemon = pkm, selectedPokemon = null, selectedPokemonSource = null) }
+                }
+                .onFailure { e ->
+                    _ui.update { it.copy(isBankLoading = false, globalError = e.message) }
+                }
+        }
     }
 
     fun removeFromBank(id: String) {

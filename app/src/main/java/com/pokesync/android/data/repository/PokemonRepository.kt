@@ -47,6 +47,9 @@ class PokemonRepository @Inject constructor(
     suspend fun importToVault(saveId: String, replace: Boolean = false): List<Pokemon> =
         api.importToVault(saveId, replace).map { it.toDomain() }
 
+    suspend fun addSingleToVault(saveId: String, box: Int, slot: Int): List<Pokemon> =
+        api.addSingleToVault(saveId, box, slot).map { it.toDomain() }
+
     suspend fun removeFromVault(id: String) =
         api.removeFromVault(id)
 
