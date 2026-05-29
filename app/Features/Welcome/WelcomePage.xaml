@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PKHeX.Android.Features.Welcome.WelcomePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:PKHeX.Android.ViewModels"
+    x:DataType="vm:WelcomeViewModel"
+    Shell.NavBarIsVisible="False"
+    BackgroundColor="{StaticResource BgBase}">
+
+    <Grid RowDefinitions="*, Auto, *">
+
+        <!-- Center content -->
+        <VerticalStackLayout
+            Grid.Row="1"
+            Spacing="0"
+            Padding="40,0"
+            VerticalOptions="Center">
+
+            <!-- Pokéball icon (text-based) -->
+            <Border
+                HorizontalOptions="Center"
+                WidthRequest="96"
+                HeightRequest="96"
+                Stroke="{StaticResource AccentYellow}"
+                StrokeThickness="2"
+                BackgroundColor="{StaticResource BgCard}"
+                Margin="0,0,0,32">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="48"/>
+                </Border.StrokeShape>
+                <Label
+                    Text="⬤"
+                    TextColor="{StaticResource AccentYellow}"
+                    FontSize="48"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"/>
+            </Border>
+
+            <!-- Title -->
+            <Label
+                Text="PKHeX"
+                TextColor="{StaticResource TextPrimary}"
+                FontSize="42"
+                FontAttributes="Bold"
+                HorizontalOptions="Center"
+                Margin="0,0,0,8"/>
+
+            <Label
+                Text="Save Editor"
+                TextColor="{StaticResource TextSecondary}"
+                FontSize="16"
+                HorizontalOptions="Center"
+                Margin="0,0,0,56"/>
+
+            <!-- Open button -->
+            <Button
+                Text="Open Save File"
+                Command="{Binding PickSaveFileCommand}"
+                BackgroundColor="{StaticResource AccentYellow}"
+                TextColor="#0D0D14"
+                FontAttributes="Bold"
+                FontSize="16"
+                HeightRequest="56"
+                CornerRadius="16"
+                IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"
+                Margin="0,0,0,16"/>
+
+            <!-- Error -->
+            <Label
+                Text="{Binding ErrorMessage}"
+                TextColor="{StaticResource AccentRed}"
+                FontSize="13"
+                HorizontalOptions="Center"
+                IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+
+            <!-- Loading indicator -->
+            <ActivityIndicator
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                Color="{StaticResource AccentYellow}"
+                HorizontalOptions="Center"
+                Margin="0,12,0,0"/>
+        </VerticalStackLayout>
+
+        <!-- Footer -->
+        <Label
+            Grid.Row="2"
+            Text="Supports all mainline Pokémon save formats"
+            TextColor="{StaticResource TextMuted}"
+            FontSize="12"
+            HorizontalOptions="Center"
+            VerticalOptions="End"
+            Margin="0,0,0,32"/>
+    </Grid>
+</ContentPage>

@@ -1,8 +1,0 @@
-<resources>
-    <string name="app_name">PokeSync</string>
-    <string name="connect_title">Connect to Server</string>
-    <string name="vault_title">Vault</string>
-    <string name="saves_title">Save Files</string>
-    <string name="transfer_title">Transfer</string>
-    <string name="settings_title">Settings</string>
-</resources>

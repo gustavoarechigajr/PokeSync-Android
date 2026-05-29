@@ -1,10 +1,26 @@
-.gradle/
+# ---- .NET / MAUI ----
+**/bin/
+**/obj/
+*.user
+*.suo
+.vs/
+
+# ---- Node / Vite (frontend) ----
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+
+# ---- misc ----
 .idea/
-local.properties
-*.iml
-build/
-app/build/
-captures/
 .DS_Store
 *.keystore
 keystore.properties
+local.properties
+graphify-out/
+
+# NOTE: generated files the build needs are intentionally committed (force-added):
+#   frontend/src/data/sdk/**            (Orval API client — regen needs the backend's Swagger)
+#   frontend/src/**/*.gen.ts            (routeTree, docs)
+#   backend/PKVault.Backend/wwwroot/**  (built frontend embedded into the backend)
+
+.gradle/

@@ -1,0 +1,115 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Was Microsoft.NET.Sdk.Web. Converted to a plain class library so it can be referenced by the
+         net10.0-android MAUI app: the Web SDK's implicit Microsoft.AspNetCore.App FrameworkReference
+         has no Android runtime pack (NETSDK1082). ASP.NET is supplied via direct DLL references below
+         (and copied into the app at runtime by the Android project). -->
+    <AspNetCoreSharedDir>$(NetCoreRoot)/shared/Microsoft.AspNetCore.App/10.0.7</AspNetCoreSharedDir>
+
+    <!-- Opt-in desktop runner + Swagger for one-off frontend SDK regeneration (Orval). -->
+    <OutputType Condition="'$(EnableSwagger)' == 'true'">Exe</OutputType>
+    <DefineConstants Condition="'$(EnableSwagger)' == 'true'">$(DefineConstants);ENABLE_SWAGGER</DefineConstants>
+
+    <!-- Embed the built React frontend (copied from frontend/dist) so the backend serves it
+         on-device via ManifestEmbeddedFileProvider. -->
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- <OutputType>Exe</OutputType> -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>PKVault.Backend</RootNamespace>
+    <!-- <PublishAot>true</PublishAot> -->
+    <!-- <IsAotCompatible>true</IsAotCompatible> -->
+    
+    <!-- <PublishSingleFile>true</PublishSingleFile> -->
+    <!-- <SelfContained>true</SelfContained> -->
+
+    <Version>1.7.7</Version>
+    <ApplicationDisplayVersion>1.7.7</ApplicationDisplayVersion>
+    <ApplicationVersion>1.7.7</ApplicationVersion>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Product>PKVault</Product>
+    <Authors>Richard Haddad</Authors>
+    <Copyright>Richard Haddad</Copyright>
+    <SourceRevisionId>$([System.DateTime]::UtcNow.ToString("yyMMddHHmmss"))</SourceRevisionId>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Chnapy/PKVault</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Chnapy/PKVault</PackageProjectUrl>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <EffectiveMode>$([MSBuild]::ValueOrDefault('$(Mode)', 'default'))</EffectiveMode>
+
+    <ModeDefine Condition=" '$(EffectiveMode)' == 'gen-pokeapi' ">MODE_GEN_POKEAPI</ModeDefine>
+    <ModeDefine Condition=" '$(EffectiveMode)' == 'default' ">MODE_DEFAULT</ModeDefine>
+
+    <DefineConstants>$(DefineConstants);$(ModeDefine)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Auth packages (BCrypt, JwtBearer, IdentityModel) removed — local single-user app, no auth. -->
+    <!-- Swagger/NSwag is opt-in (build with -p:EnableSwagger=true) for one-off frontend SDK
+         regeneration on desktop. Off by default so it never leaks into the Android build. -->
+    <PackageReference Include="NSwag.AspNetCore" Version="14.6.3" Condition="'$(EnableSwagger)' == 'true'" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.2" />
+    <PackageReference Include="PokeApi.Models" Version="1.0.21" />
+    <PackageReference Include="Serilog" Version="4.3.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="System.IO.Abstractions" Version="22.1.0" />
+    <PackageReference Include="DiffPlex" Version="1.9.0" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.2" />
+
+    <!-- PKHeX.Core: reference the shared source project (android-buildable) instead of the prebuilt
+         net10.0 DLL, so the same PKHeX.Core compiles for both desktop and the Android app. -->
+    <ProjectReference Include="../../pkhex/PKHeX.Core/PKHeX.Core.csproj" />
+  </ItemGroup>
+
+  <!-- ASP.NET Core via direct managed-DLL references (replaces the Web SDK framework reference).
+       Private=False: compile-time only; the consuming Android app ships the runtime copies. -->
+  <ItemGroup>
+    <Reference Include="$(AspNetCoreSharedDir)/*.dll"
+               Exclude="$(AspNetCoreSharedDir)/aspnetcorev2_inprocess.dll">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Embed the React build output (frontend/dist copied to ./wwwroot). -->
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot/**/*" />
+  </ItemGroup>
+
+  <!-- Microsoft.NET.Sdk.Web injects these implicit global usings; the plain SDK does not, so add them
+       back to keep the existing source compiling unchanged. -->
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <Choose>
+    <!-- <When Condition=" '$(EffectiveMode)' == 'gen-pokeapi' ">
+      <ItemGroup>
+      </ItemGroup>
+    </When> -->
+
+    <When Condition=" '$(EffectiveMode)' == 'default' ">
+      <ItemGroup>
+        <EmbeddedResource Include="pokeapi/generated/api-data/*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+        <EmbeddedResource Include="pokeapi/generated/sheets/*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+        
+        <Content Remove="pokeapi/generated/**/*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+      </ItemGroup>
+    </When>
+  </Choose>
+</Project>

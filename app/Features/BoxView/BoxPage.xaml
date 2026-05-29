@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PKHeX.Android.Features.BoxView.BoxPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:PKHeX.Android.ViewModels"
+    x:DataType="vm:BoxViewModel"
+    Title="{Binding GameName}"
+    BackgroundColor="{StaticResource BgBase}">
+
+    <Shell.TitleView>
+        <Grid ColumnDefinitions="*, Auto" Padding="0,0,8,0">
+            <VerticalStackLayout VerticalOptions="Center" Spacing="1">
+                <Label Text="{Binding TrainerName}" TextColor="{StaticResource TextPrimary}" FontSize="16" FontAttributes="Bold"/>
+                <Label Text="{Binding GameName}" TextColor="{StaticResource TextSecondary}" FontSize="11"/>
+            </VerticalStackLayout>
+            <Button
+                Grid.Column="1"
+                Text="Save"
+                Command="{Binding SaveToFileCommand}"
+                BackgroundColor="{StaticResource AccentYellow}"
+                TextColor="#0D0D14"
+                FontAttributes="Bold"
+                FontSize="13"
+                HeightRequest="36"
+                CornerRadius="10"
+                Padding="16,0"
+                IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"/>
+        </Grid>
+    </Shell.TitleView>
+
+    <Grid RowDefinitions="Auto, Auto, Auto, *, Auto">
+
+        <!-- Trainer info strip -->
+        <Grid
+            Grid.Row="0"
+            ColumnDefinitions="*, Auto"
+            BackgroundColor="{StaticResource BgSurface}"
+            Padding="16,10">
+            <Label
+                Text="{Binding TrainerID, StringFormat='TID: {0}'}"
+                TextColor="{StaticResource TextMuted}"
+                FontSize="12"
+                VerticalOptions="Center"/>
+            <ActivityIndicator
+                Grid.Column="1"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                Color="{StaticResource AccentYellow}"
+                HeightRequest="20"
+                WidthRequest="20"/>
+        </Grid>
+
+        <!-- View mode switcher: Party | Boxes | Items -->
+        <Grid
+            Grid.Row="1"
+            ColumnDefinitions="*, *, *"
+            BackgroundColor="{StaticResource BgSurface}"
+            Padding="12,8,12,10"
+            ColumnSpacing="6">
+            <Border Grid.Column="0" Padding="0,7"
+                BackgroundColor="{Binding IsPartyView, Converter={StaticResource BoolToAccentConverter}}"
+                Stroke="{StaticResource BorderSubtle}" StrokeThickness="1">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ShowPartyViewCommand}"/>
+                </Border.GestureRecognizers>
+                <Label Text="Party" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center"
+                    TextColor="{Binding IsPartyView, Converter={StaticResource BoolToTextConverter}}"/>
+            </Border>
+            <Border Grid.Column="1" Padding="0,7"
+                BackgroundColor="{Binding IsBoxView, Converter={StaticResource BoolToAccentConverter}}"
+                Stroke="{StaticResource BorderSubtle}" StrokeThickness="1">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ShowBoxViewCommand}"/>
+                </Border.GestureRecognizers>
+                <Label Text="Boxes" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center"
+                    TextColor="{Binding IsBoxView, Converter={StaticResource BoolToTextConverter}}"/>
+            </Border>
+            <Border Grid.Column="2" Padding="0,7"
+                BackgroundColor="{Binding IsItemsView, Converter={StaticResource BoolToAccentConverter}}"
+                Stroke="{StaticResource BorderSubtle}" StrokeThickness="1">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ShowItemsViewCommand}"/>
+                </Border.GestureRecognizers>
+                <Label Text="Items" FontSize="12" FontAttributes="Bold" HorizontalOptions="Center"
+                    TextColor="{Binding IsItemsView, Converter={StaticResource BoolToTextConverter}}"/>
+            </Border>
+        </Grid>
+
+        <!-- Box selector tabs (visible only in Boxes view) -->
+        <ScrollView
+            Grid.Row="2"
+            Orientation="Horizontal"
+            HorizontalScrollBarVisibility="Never"
+            BackgroundColor="{StaticResource BgSurface}"
+            Padding="12,0,12,8"
+            IsVisible="{Binding IsBoxView}">
+            <HorizontalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding BoxNames}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border Padding="12,6" BackgroundColor="{StaticResource BgElevated}" Stroke="{StaticResource BorderSubtle}" StrokeThickness="1">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer CommandParameter="{Binding .}" Tapped="OnBoxTabTapped"/>
+                            </Border.GestureRecognizers>
+                            <Label Text="{Binding .}" TextColor="{StaticResource TextSecondary}" FontSize="12"/>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- Main content area -->
+        <Grid Grid.Row="3">
+
+            <!-- ── Boxes grid ──────────────────────────────────────────────── -->
+            <CollectionView
+                ItemsSource="{Binding Slots}"
+                Margin="8,8,8,0"
+                SelectionMode="None"
+                IsVisible="{Binding IsBoxView}">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout Orientation="Vertical" Span="6" HorizontalItemSpacing="3" VerticalItemSpacing="3"/>
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BoxSlotViewModel">
+                        <Border
+                            BackgroundColor="{StaticResource BgCard}"
+                            Stroke="{StaticResource BorderSubtle}"
+                            StrokeThickness="1"
+                            HeightRequest="64"
+                            Padding="3">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="8"/></Border.StrokeShape>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:BoxViewModel}}, Path=SelectSlotCommand}"
+                                    CommandParameter="{Binding .}"/>
+                            </Border.GestureRecognizers>
+                            <!-- Occupied slot -->
+                            <Grid RowDefinitions="12, *, Auto" IsVisible="{Binding IsOccupied}">
+                                <Label Grid.Row="0" Text="✦" TextColor="{StaticResource AccentYellow}"
+                                    FontSize="8" HorizontalOptions="End" IsVisible="{Binding IsShiny}" Margin="0,1,2,0"/>
+                                <Image Grid.Row="1" Source="{Binding SpriteUrl}"
+                                    HeightRequest="36" WidthRequest="36"
+                                    Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                <Label Grid.Row="2" Text="{Binding DisplayLevel}"
+                                    TextColor="{StaticResource AccentBlue}" FontSize="8"
+                                    HorizontalOptions="Center" Margin="0,0,0,2"/>
+                            </Grid>
+                            <!-- Empty slot -->
+                            <Label Text="+" TextColor="{StaticResource TextMuted}" FontSize="20"
+                                HorizontalOptions="Center" VerticalOptions="Center"
+                                IsVisible="{Binding IsEmpty}"/>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- ── Party grid ──────────────────────────────────────────────── -->
+            <ScrollView IsVisible="{Binding IsPartyView}" Margin="8,8,8,0">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="PARTY" TextColor="{StaticResource TextMuted}" FontSize="11"
+                        FontAttributes="Bold" Margin="4,0"/>
+                    <CollectionView
+                        ItemsSource="{Binding PartySlots}"
+                        HeightRequest="320"
+                        SelectionMode="None">
+                        <CollectionView.ItemsLayout>
+                            <GridItemsLayout Orientation="Vertical" Span="3" HorizontalItemSpacing="6" VerticalItemSpacing="6"/>
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BoxSlotViewModel">
+                                <Border
+                                    BackgroundColor="{StaticResource BgCard}"
+                                    Stroke="{StaticResource BorderSubtle}"
+                                    StrokeThickness="1"
+                                    HeightRequest="100"
+                                    Padding="8">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:BoxViewModel}}, Path=SelectSlotCommand}"
+                                            CommandParameter="{Binding .}"/>
+                                    </Border.GestureRecognizers>
+                                    <!-- Occupied party slot -->
+                                    <Grid RowDefinitions="14, *, Auto, Auto" IsVisible="{Binding IsOccupied}">
+                                        <Label Grid.Row="0" Text="✦" TextColor="{StaticResource AccentYellow}"
+                                            FontSize="10" HorizontalOptions="End" IsVisible="{Binding IsShiny}"/>
+                                        <Image Grid.Row="1" Source="{Binding SpriteUrl}"
+                                            HeightRequest="52" WidthRequest="52"
+                                            Aspect="AspectFit" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                        <Label Grid.Row="2" Text="{Binding SpeciesName}"
+                                            TextColor="{StaticResource TextPrimary}" FontSize="11" FontAttributes="Bold"
+                                            HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                                            LineBreakMode="TailTruncation"/>
+                                        <Label Grid.Row="3" Text="{Binding DisplayLevel}"
+                                            TextColor="{StaticResource AccentBlue}" FontSize="11" FontAttributes="Bold"
+                                            HorizontalOptions="Center" Margin="0,2,0,0"/>
+                                    </Grid>
+                                    <!-- Empty party slot -->
+                                    <Label Text="+" TextColor="{StaticResource TextMuted}" FontSize="28"
+                                        HorizontalOptions="Center" VerticalOptions="Center"
+                                        IsVisible="{Binding IsEmpty}"/>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- ── Items list ──────────────────────────────────────────────── -->
+            <ScrollView IsVisible="{Binding IsItemsView}" Margin="8,8,8,0">
+                <VerticalStackLayout Spacing="14" BindableLayout.ItemsSource="{Binding ItemPouches}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ItemPouchViewModel">
+                            <VerticalStackLayout Spacing="6">
+                                <!-- Pouch header -->
+                                <Label Text="{Binding Name}"
+                                    TextColor="{StaticResource TextMuted}" FontSize="11"
+                                    FontAttributes="Bold" Margin="4,0"/>
+                                <!-- Item rows -->
+                                <VerticalStackLayout Spacing="4" BindableLayout.ItemsSource="{Binding Items}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ItemEntryViewModel">
+                                            <Border BackgroundColor="{StaticResource BgCard}"
+                                                Stroke="{StaticResource BorderSubtle}" StrokeThickness="1" Padding="14,10">
+                                                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                                                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                                                    <Label Text="{Binding ItemName}"
+                                                        TextColor="{StaticResource TextPrimary}"
+                                                        FontSize="13" VerticalOptions="Center"/>
+                                                    <Border Grid.Column="1"
+                                                        BackgroundColor="{StaticResource BgElevated}"
+                                                        Stroke="{StaticResource BorderSubtle}" Padding="8,4"
+                                                        WidthRequest="72">
+                                                        <Border.StrokeShape><RoundRectangle CornerRadius="8"/></Border.StrokeShape>
+                                                        <Entry Text="{Binding Count}"
+                                                            TextColor="{StaticResource AccentYellow}"
+                                                            BackgroundColor="Transparent"
+                                                            FontSize="13" FontAttributes="Bold"
+                                                            Keyboard="Numeric"
+                                                            HorizontalTextAlignment="Center"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </ScrollView>
+
+        </Grid>
+
+        <!-- Status toast -->
+        <Border
+            Grid.Row="4"
+            BackgroundColor="{StaticResource BgElevated}"
+            Stroke="{StaticResource BorderSubtle}"
+            Margin="16,8"
+            Padding="16,10"
+            IsVisible="{Binding StatusMessage, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+            <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+            <Label
+                Text="{Binding StatusMessage}"
+                TextColor="{StaticResource AccentGreen}"
+                FontSize="14"
+                HorizontalOptions="Center"/>
+        </Border>
+    </Grid>
+</ContentPage>

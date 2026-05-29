@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="PKHeX.Android.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:welcome="clr-namespace:PKHeX.Android.Features.Welcome"
+    xmlns:box="clr-namespace:PKHeX.Android.Features.BoxView"
+    xmlns:editor="clr-namespace:PKHeX.Android.Features.PokemonEditor"
+    Shell.NavBarIsVisible="False"
+    BackgroundColor="{StaticResource BgBase}"
+    FlyoutBehavior="Disabled">
+
+    <!-- Welcome / landing route -->
+    <ShellContent
+        Route="welcome"
+        ContentTemplate="{DataTemplate welcome:WelcomePage}"
+        Shell.NavBarIsVisible="False"/>
+
+    <!-- Main app shell (shown after save is loaded) -->
+    <TabBar Route="main" Shell.TabBarIsVisible="False">
+        <Tab Route="box">
+            <ShellContent
+                ContentTemplate="{DataTemplate box:BoxPage}"
+                Shell.NavBarIsVisible="True"/>
+        </Tab>
+    </TabBar>
+
+</Shell>

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/app/">
+    <Project Path="app/PKHeX.Android.csproj" />
+  </Folder>
+  <Folder Name="/backend/">
+    <Project Path="backend/PKVault.Backend/PKVault.Backend.csproj" />
+  </Folder>
+  <Folder Name="/pkhex/">
+    <Project Path="pkhex/PKHeX.Core/PKHeX.Core.csproj" />
+  </Folder>
+</Solution>

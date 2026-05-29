@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PKHeX.Android.Features.MovePicker.MovePickerPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:PKHeX.Android.ViewModels"
+    x:DataType="vm:MovePickerViewModel"
+    Title="Choose Move"
+    BackgroundColor="{StaticResource BgBase}">
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- Search bar -->
+        <Border
+            Grid.Row="0"
+            BackgroundColor="{StaticResource BgElevated}"
+            Stroke="{StaticResource BorderSubtle}"
+            Margin="14,14,14,8"
+            Padding="8,4">
+            <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+            <SearchBar
+                Text="{Binding SearchText}"
+                Placeholder="Search moves…"
+                PlaceholderColor="{StaticResource TextMuted}"
+                TextColor="{StaticResource TextPrimary}"
+                BackgroundColor="Transparent"
+                CancelButtonColor="{StaticResource TextSecondary}"/>
+        </Border>
+
+        <!-- Move list -->
+        <CollectionView
+            Grid.Row="1"
+            ItemsSource="{Binding FilteredMoves}"
+            SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:MoveEntry">
+                    <Border
+                        BackgroundColor="Transparent"
+                        Padding="14,0"
+                        Margin="0,1">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovePickerViewModel}}, Path=SelectMoveCommand}"
+                                CommandParameter="{Binding .}"/>
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="*, Auto" Padding="0,14">
+                            <Label
+                                Text="{Binding Name}"
+                                TextColor="{StaticResource TextPrimary}"
+                                FontSize="15"
+                                VerticalOptions="Center"/>
+                            <Label
+                                Grid.Column="1"
+                                Text="{Binding Id, StringFormat='#{0}'}"
+                                TextColor="{StaticResource TextMuted}"
+                                FontSize="12"
+                                VerticalOptions="Center"/>
+                        </Grid>
+                        <!-- Separator -->
+                        <Border.StrokeShape><Rectangle/></Border.StrokeShape>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
