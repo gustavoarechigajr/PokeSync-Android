@@ -9,6 +9,12 @@ cross-generation transfer), all running in-process on your phone.
 > Rebuilt from the ground up as a self-contained .NET MAUI app. (The previous Kotlin client + hosted
 > server are retired — see git history.)
 
+## Screenshots
+
+| Storage (save ⇄ vault) | Enriched summary + transfer |
+|---|---|
+| ![Dual-pane storage](docs/screenshots/storage.png) | ![Pokémon summary](docs/screenshots/summary.png) |
+
 ## What it does
 
 - **Auto-detects** your emulator saves (Eden/Switch, RetroArch, Azahar/3DS, MelonDS/DS, DraStic, …)
